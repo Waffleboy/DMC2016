@@ -8,7 +8,7 @@ Created on Mon Apr 11 10:22:37 2016
 import pandas as pd,numpy as np
 from sklearn.preprocessing import LabelEncoder,Imputer
 
-train = pd.read_csv('C:/Users/Thiru/Desktop/DMC_2016_task_01/orders_train.csv',sep=';')
+train = pd.read_csv('E:/Git/DMC2016/thirufiles/orders_train.csv',sep=';')
 
 """
 Input:
@@ -85,7 +85,7 @@ Output:
 <Integer> Sum of errors of predicted vs target
 """
 def computeError(predicted,target):
-    return sum(predicted-target)
+    return sum(abs(predicted-target))
     
 def run():
     global train
