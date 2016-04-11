@@ -10,6 +10,14 @@ from sklearn.preprocessing import LabelEncoder,Imputer
 
 train = pd.read_csv('C:/Users/Thiru/Desktop/DMC_2016_task_01/orders_train.csv',sep=';')
 
+"""
+Input:
+1) <PD DF> df: pandas dataframe of training data
+2) <Boolean> impute: if True, do imputation for missing values rather than dropping
+
+Output:
+<PD DF> Processed DF
+"""
 def preprocess(df,impute):
     def dropRedundantColumns(df):
         dropCols = ['orderID','orderDate']
@@ -56,8 +64,12 @@ def preprocess(df,impute):
     return df
 
 """
-Input: pandas df of predicted labels, target labels.
-Returns: Sum of error
+Input:
+1) <PD DF> predicted: pandas df of predicted labels
+2) <PD DF> target: 1D df/array of target label.
+
+Output:
+<Integer> Sum of errors of predicted vs target
 """
 def computeError(predicted,target):
     return sum(predicted-target)
