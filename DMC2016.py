@@ -61,3 +61,10 @@ Returns: Sum of error
 """
 def computeError(predicted,target):
     return sum(predicted-target)
+    
+def run():
+    global train
+    train = preprocess(train,False)
+    
+if __name__ == '__main__':
+	run()
