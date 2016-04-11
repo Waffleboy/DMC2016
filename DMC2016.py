@@ -43,7 +43,7 @@ def preprocess(df,impute):
     # Ideally, impute the S,M,L to numeric, but whats I,A??
     def fixSizeCode(df):
         #TEMPORARY, JUST DROP INSTEAD. Find better way!
-        df = df.replace(['XS','S','M','L,','I','A'],np.nan)  
+        df = df.replace(['XS','S','M','L','I','A','XL'],np.nan)  
         return df[pd.notnull(df['sizeCode'])]
         
     def oneHotEncode(df):
@@ -65,6 +65,19 @@ def preprocess(df,impute):
 
 """
 Input:
+1) <PD DF> df: pandas dataframe
+
+Output:
+1) <numpy array> dataset: the features of the training set
+2) <numpy array> target: the labels of the training set
+"""
+def splitDatasetTarget(df):
+    dataset = df.drop(['returnQuantity'], axis=1).values
+    target = df['returnQuantity'].values
+    return dataset,target
+    
+"""
+Input:
 1) <PD DF> predicted: pandas df of predicted labels
 2) <PD DF> target: 1D df/array of target label.
 
@@ -77,6 +90,7 @@ def computeError(predicted,target):
 def run():
     global train
     train = preprocess(train,False)
+    dataset,target = splitDatasetTarget(train)
     
 if __name__ == '__main__':
 	run()
