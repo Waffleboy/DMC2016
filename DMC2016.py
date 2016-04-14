@@ -122,7 +122,7 @@ def accuracyChecker(dataset,target,clfs):
         name= getNameFromModel(classifier)
         print('******** '+name+' ********')
         predicted = cross_validation.cross_val_predict(classifier,dataset,target,cv=5)
-        print('5 fold cross val score for '+name+' : '+str(round(metrics.accuracy_score(target,predicted)),2))
+        print('5 fold cross val score for '+name+' : '+str(round(metrics.accuracy_score(target,predicted),2)))
         print(metrics.confusion_matrix(target,predicted,labels=[0,1,2,3,4,5]))
         print('Competition metric score : '+str(computeError(predicted,target)))
     
@@ -140,7 +140,8 @@ def computeError(predicted,target):
     return sum(abs(predicted-target))
     
 def run():
-    train = pd.read_csv('E:/Git/DMC2016/thirufiles/orders_train.csv',sep=';')
+    # train = pd.read_csv('E:/Git/DMC2016/thirufiles/orders_train.csv',sep=';')
+    train = pd.read_csv('/home/andre/workshop/dmc2016/andrefiles/orders_train.csv',sep=';')
     train = preprocess(train,False)
     dataset,target = splitDatasetTarget(train)
     clfs = [randomForest()]
