@@ -115,7 +115,7 @@ Output:
 for all classifiers. 
 """
 def accuracyChecker(dataset,target,clfs):
-    if type(clfs) != tuple:
+    if type(clfs) != list:
         clfs = [clfs]
     
     for classifier in clfs:
