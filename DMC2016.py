@@ -6,10 +6,16 @@ Created on Mon Apr 11 10:22:37 2016
 """
 
 import pandas as pd,numpy as np
+from sklearn import metrics,cross_validation
 from sklearn.preprocessing import LabelEncoder,Imputer
+from sklearn.ensemble import RandomForest
+import xgboost as xgb
 
 train = pd.read_csv('E:/Git/DMC2016/thirufiles/orders_train.csv',sep=';')
 
+###################################################
+#              Preprocessing Methods              #
+###################################################
 """
 Input:
 1) <PD DF> df: pandas dataframe of training data
@@ -75,7 +81,53 @@ def splitDatasetTarget(df):
     dataset = df.drop(['returnQuantity'], axis=1).values
     target = df['returnQuantity'].values
     return dataset,target
+
+###################################################
+#                   Models                        #
+###################################################
+
+##Dont use this for accuracyChecker
+def xgBoost():
+    clf = xgb.XGBClassifier(max_depth = 6,n_estimators=200,nthread=8,seed=1,
+                            objective= 'multi:softmax',learning_rate=0.5,subsample=0.9)
+    return clf
     
+def randomForest():
+    clf = RandomForest(max_depth=8, n_estimators=300,n_jobs=8,random_state=1)
+    return clf
+    
+###################################################
+#                 Testing Models                  #
+###################################################
+
+def getNameFromModel(clf):
+    name = str(type(clf))
+    name = name[name.rfind('.')+1:name.rfind("'")] #subset from last . to last '
+    return name
+
+"""
+Input:
+1) <pd df> dataset: Pandas dataframe of features
+2) <pf df> target: Pandas 1D dataframe of target labels
+3) <List or classifier> clfs: List of classifiers of single classifier
+
+Output:
+1) None. Prints 5 fold cross val score, confusion matrix, and competition metric
+for all classifiers. 
+"""
+def accuracyChecker(dataset,target,clfs):
+    if type(clfs) != tuple:
+        clfs = list(clfs)
+    
+    for classifier in clfs:
+        name= getNameFromModel(classifier)
+        predicted = cross_validation.cross_val_predict(classifier,dataset,target,cv=5)
+        print('5 fold cross val score for '+name+' : '+str(round(metrics.accuracy_score(target,predicted)),2))
+        print(metrics.confusion_matrix(target,predicted,labels=[0,1,2,3,4,5]))
+        print('Competition metric score : '+str(computeError(predicted,target)))
+    
+    
+
 """
 Input:
 1) <PD DF> predicted: pandas df of predicted labels
@@ -91,6 +143,9 @@ def run():
     global train
     train = preprocess(train,False)
     dataset,target = splitDatasetTarget(train)
+    clfs = [randomForest()]
+    accuracyChecker(dataset,target,clfs)
+    
     
 if __name__ == '__main__':
 	run()
