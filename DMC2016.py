@@ -92,7 +92,7 @@ def xgBoost():
     return clf
     
 def randomForest():
-    clf = RandomForestClassifier(max_depth=8, n_estimators=300,n_jobs=8,random_state=1)
+    clf = RandomForestClassifier(max_depth=8, n_estimators=200,n_jobs=8,random_state=1)
     return clf
     
 ###################################################
