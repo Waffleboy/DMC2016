@@ -8,7 +8,7 @@ Created on Mon Apr 11 10:22:37 2016
 import pandas as pd,numpy as np
 from sklearn import metrics,cross_validation
 from sklearn.preprocessing import LabelEncoder,Imputer
-from sklearn.ensemble import RandomForest
+from sklearn.ensemble import RandomForestClassifier
 import xgboost as xgb
 
 train = pd.read_csv('E:/Git/DMC2016/thirufiles/orders_train.csv',sep=';')
@@ -86,14 +86,14 @@ def splitDatasetTarget(df):
 #                   Models                        #
 ###################################################
 
-##Dont use this for accuracyChecker
+##Dont use this for accuracyChecker. Ran 1+ hr and didnt stop.
 def xgBoost():
     clf = xgb.XGBClassifier(max_depth = 6,n_estimators=200,nthread=8,seed=1,
                             objective= 'multi:softmax',learning_rate=0.5,subsample=0.9)
     return clf
     
 def randomForest():
-    clf = RandomForest(max_depth=8, n_estimators=300,n_jobs=8,random_state=1)
+    clf = RandomForestClassifier(max_depth=8, n_estimators=300,n_jobs=8,random_state=1)
     return clf
     
 ###################################################
@@ -121,6 +121,7 @@ def accuracyChecker(dataset,target,clfs):
     
     for classifier in clfs:
         name= getNameFromModel(classifier)
+        print('******** '+name+' ********')
         predicted = cross_validation.cross_val_predict(classifier,dataset,target,cv=5)
         print('5 fold cross val score for '+name+' : '+str(round(metrics.accuracy_score(target,predicted)),2))
         print(metrics.confusion_matrix(target,predicted,labels=[0,1,2,3,4,5]))
