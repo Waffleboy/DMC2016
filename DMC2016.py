@@ -11,7 +11,6 @@ from sklearn.preprocessing import LabelEncoder,Imputer
 from sklearn.ensemble import RandomForestClassifier
 import xgboost as xgb
 
-train = pd.read_csv('E:/Git/DMC2016/thirufiles/orders_train.csv',sep=';')
 
 ###################################################
 #              Preprocessing Methods              #
@@ -117,7 +116,7 @@ for all classifiers.
 """
 def accuracyChecker(dataset,target,clfs):
     if type(clfs) != tuple:
-        clfs = list(clfs)
+        clfs = [clfs]
     
     for classifier in clfs:
         name= getNameFromModel(classifier)
@@ -141,7 +140,7 @@ def computeError(predicted,target):
     return sum(abs(predicted-target))
     
 def run():
-    global train
+    train = pd.read_csv('E:/Git/DMC2016/thirufiles/orders_train.csv',sep=';')
     train = preprocess(train,False)
     dataset,target = splitDatasetTarget(train)
     clfs = [randomForest()]
