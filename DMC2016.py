@@ -99,6 +99,7 @@ Output:
 #NOTE: Currently configured to only return ONE sample.
 # SELF CODED CAUSE SKLEARN IS A FKING BURDEN
 def stratifiedSampleGenerator(dataset,target,subsample_size=0.1):
+    print('Generating stratified sample of size ' + str(round(len(dataset)*subsample_size,2)))
     dic={}
     indexes = np.array([])
     # find number of classes in sample
@@ -111,6 +112,7 @@ def stratifiedSampleGenerator(dataset,target,subsample_size=0.1):
         counts = dic[label]   #get number of times class occurs
         newIndex = np.random.choice(classIndex,counts,replace=False)
         indexes = np.concatenate((indexes,newIndex),axis=0)
+        
     indexes = indexes.astype(int)
     sampleData = dataset.ix[indexes]
     sampleData.drop('index',inplace=True,axis=1)
@@ -123,6 +125,9 @@ def stratifiedSampleGenerator(dataset,target,subsample_size=0.1):
     
     newDataset = sampleData.drop('returnQuantity',axis=1)
     newTarget = sampleData['returnQuantity']
+    if newDataset['sizeCode'].ftype != 'int32:dense':
+        newDataset['sizeCode'] = newDataset['sizeCode'].astype(int)
+        
     return newDataset,newTarget
             
         
@@ -132,8 +137,8 @@ def stratifiedSampleGenerator(dataset,target,subsample_size=0.1):
 
 ##Dont use this for accuracyChecker. Ran 1+ hr and didnt stop.
 def xgBoost():
-    clf = xgb.XGBClassifier(max_depth = 6,n_estimators=200,nthread=8,seed=1,
-                            objective= 'multi:softmax',learning_rate=0.5,subsample=0.9)
+    clf = xgb.XGBClassifier(max_depth = 6,n_estimators=200,nthread=8,seed=1,silent=1,
+                            objective= 'multi:softmax',learning_rate=0.03,subsample=0.9)
     return clf
     
 def randomForest():
@@ -160,6 +165,7 @@ Output:
 for all classifiers. 
 """
 def accuracyChecker(dataset,target,clfs):
+    print('Beginning evaluation of models...')
     if type(clfs) != list:
         clfs = [clfs]
     
@@ -171,21 +177,30 @@ def accuracyChecker(dataset,target,clfs):
             continue
         print('******** '+name+' ********')
         predicted = cross_validation.cross_val_predict(classifier,dataset,target,cv=5)
-        print('5 fold cross val score for '+name+' : '+str(round(metrics.accuracy_score(target,predicted),2)))
+        print('5 fold cross val accuracy for '+name+': '+str( round(metrics.accuracy_score(target,predicted)*100,2) )+'%')
         print(metrics.confusion_matrix(target,predicted,labels=[0,1,2,3,4,5]))
-        print('Competition metric score : '+str(computeError(predicted,target)))
+        print(name + 'Competition metric score : '+str(computeError(predicted,target)))
     
 def XGBChecker(dataset,target,classifier):
     print('******** XGBClassifier ********')
     cvList = []
-    predicted = []
+    predicted = np.array([])
+    fold = 0
     sss = StratifiedShuffleSplit(target,5,test_size=0.2, random_state=0)    
     for train_index, test_index in sss:
-        classifier.fit(dataset[train_index], target[train_index], early_stopping_rounds=25, 
-                       eval_metric="merror", eval_set=[(dataset[test_index], target[test_index])])
-        pred = classifier.predict(dataset[test_index])
-        predicted.append(pred)
-        cvList.append(metrics.accuracy_score(target[test_index],pred))
+        fold+=1
+        print('Training Xgboost fold '+str(fold))
+        trainX = dataset.ix[train_index].drop('index',axis=1)   
+        trainY = target[train_index]
+        testX = dataset.ix[test_index].drop('index',axis=1)
+        testY = target[test_index]
+        
+        classifier.fit(trainX,trainY, early_stopping_rounds=25, 
+                       eval_metric="merror", eval_set=[(testX, testY)])
+                       
+        pred = classifier.predict(testX)
+        predicted = np.concatenate((predicted,pred))
+        cvList.append(metrics.accuracy_score(testY,pred))
     
     print('Xgboost 5 fold cv: '+str(cvList))
     print('Average CV Score: '+ str(np.mean(cvList)))
@@ -206,8 +221,9 @@ def computeError(predicted,target):
 def run():
     train = pd.read_csv('E:/Git/DMC2016/thirufiles/orders_train.csv',sep=';')
     train = preprocess(train,False)
+    print('Processed data. Splitting..')
     dataset,target = splitDatasetTarget(train)
-    dataset,target=stratifiedSampleGenerator(dataset,target,subsample_szize=0.1)
+    dataset,target = stratifiedSampleGenerator(dataset,target,subsample_size=0.1)
     clfs = [randomForest()]
     accuracyChecker(dataset,target,clfs)
     
