@@ -5,11 +5,11 @@ Created on Mon Apr 11 10:22:37 2016
 @author: Thiru
 """
 
-import pandas as pd,numpy as np,random
+import pandas as pd,numpy as np
 from sklearn import metrics,cross_validation
 from sklearn.preprocessing import LabelEncoder,Imputer
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.cross_validation import StratifiedShuffleSplit
+from sklearn.cross_validation import StratifiedShuffleSplit,train_test_split
 import xgboost as xgb
 
 
@@ -67,7 +67,7 @@ def preprocess(df,impute):
     df = missingValues(df,impute=impute)
     df = fixSizeCode(df)
     df = oneHotEncode(df)
-    df.reset_index(inplace=True)
+    df.reset_index(inplace=True,drop=True)
     return df
 
 """
@@ -99,36 +99,38 @@ Output:
 #NOTE: Currently configured to only return ONE sample.
 # SELF CODED CAUSE SKLEARN IS A FKING BURDEN
 def stratifiedSampleGenerator(dataset,target,subsample_size=0.1):
-    print('Generating stratified sample of size ' + str(round(len(dataset)*subsample_size,2)))
-    dic={}
-    indexes = np.array([])
-    # find number of classes in sample
-    for label in target.unique(): 
-         labelSize = len(target[target==label]) 
-         dic[label] = int(labelSize * subsample_size)
-    # make a dataset of size sizeSample with ratio of classes in dic
-    for label in dic:
-        classIndex = target[target==label].index #obtain indexes of class
-        counts = dic[label]   #get number of times class occurs
-        newIndex = np.random.choice(classIndex,counts,replace=False)
-        indexes = np.concatenate((indexes,newIndex),axis=0)
-        
-    indexes = indexes.astype(int)
-    sampleData = dataset.ix[indexes]
-    sampleData.drop('index',inplace=True,axis=1)
-    sampleTarget = target[indexes]
-    sampleData['returnQuantity'] = sampleTarget
-    sampleData.reset_index(inplace=True)
-    sampleData = sampleData.iloc[np.random.permutation(len(sampleData))]
-    sampleData.drop('index',inplace=True,axis=1)
-    sampleData.reset_index(inplace=True)
-    
-    newDataset = sampleData.drop('returnQuantity',axis=1)
-    newTarget = sampleData['returnQuantity']
-    if newDataset['sizeCode'].ftype != 'int32:dense':
-        newDataset['sizeCode'] = newDataset['sizeCode'].astype(int)
-        
-    return newDataset,newTarget
+    X_fit,X_eval,y_fit,y_eval= train_test_split(dataset,target,test_size=subsample_size,stratify=target)
+    return X_eval.reset_index(drop=True),y_eval.reset_index(drop=True)
+#    print('Generating stratified sample of size ' + str(round(len(dataset)*subsample_size,2)))
+#    dic={}
+#    indexes = np.array([])
+#    # find number of classes in sample
+#    for label in target.unique(): 
+#         labelSize = len(target[target==label]) 
+#         dic[label] = int(labelSize * subsample_size)
+#    # make a dataset of size sizeSample with ratio of classes in dic
+#    for label in dic:
+#        classIndex = target[target==label].index #obtain indexes of class
+#        counts = dic[label]   #get number of times class occurs
+#        newIndex = np.random.choice(classIndex,counts,replace=False)
+#        indexes = np.concatenate((indexes,newIndex),axis=0)
+#        
+#    indexes = indexes.astype(int)
+#    sampleData = dataset.ix[indexes]
+#    sampleData.drop('index',inplace=True,axis=1) #cause ix generates indexes as a column ffs
+#    sampleTarget = target[indexes]
+#    sampleData['returnQuantity'] = sampleTarget
+#    sampleData.reset_index(inplace=True)
+#    sampleData = sampleData.iloc[np.random.permutation(len(sampleData))] #shuffle dataset
+#    sampleData.drop('index',inplace=True,axis=1)
+#    sampleData.reset_index(inplace=True)
+#    
+#    newDataset = sampleData.drop('returnQuantity',axis=1)
+#    newTarget = sampleData['returnQuantity']
+#    if newDataset['sizeCode'].ftype != 'int32:dense':
+#        newDataset['sizeCode'] = newDataset['sizeCode'].astype(int)
+#        
+#    return newDataset,newTarget
             
         
 ###################################################
@@ -180,7 +182,11 @@ def accuracyChecker(dataset,target,clfs):
         print('5 fold cross val accuracy for '+name+': '+str( round(metrics.accuracy_score(target,predicted)*100,2) )+'%')
         print(metrics.confusion_matrix(target,predicted,labels=[0,1,2,3,4,5]))
         print(name + 'Competition metric score : '+str(computeError(predicted,target)))
-    
+
+"""
+Function made to specifically handle xgboost. works similar to accuracyChecker.
+Set to 5 fold CV. 
+"""    
 def XGBChecker(dataset,target,classifier):
     print('******** XGBClassifier ********')
     cvList = []
@@ -190,16 +196,18 @@ def XGBChecker(dataset,target,classifier):
     for train_index, test_index in sss:
         fold+=1
         print('Training Xgboost fold '+str(fold))
-        trainX = dataset.ix[train_index].drop('index',axis=1)   
-        trainY = target[train_index]
-        testX = dataset.ix[test_index].drop('index',axis=1)
-        testY = target[test_index]
+        trainX = dataset.ix[train_index].drop('index',axis=1).values # trainX[train_index] doesnt work tho it should
+        trainY = target[train_index].values
+        testX = dataset.ix[test_index].drop('index',axis=1).values
+        testY = target[test_index].values
+        
+        print(len(trainX),len(trainY),len(testX),len(testY))
         
         classifier.fit(trainX,trainY, early_stopping_rounds=25, 
                        eval_metric="merror", eval_set=[(testX, testY)])
                        
         pred = classifier.predict(testX)
-        predicted = np.concatenate((predicted,pred))
+        predicted = np.concatenate([predicted,pred])
         cvList.append(metrics.accuracy_score(testY,pred))
     
     print('Xgboost 5 fold cv: '+str(cvList))
