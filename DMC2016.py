@@ -5,10 +5,11 @@ Created on Mon Apr 11 10:22:37 2016
 @author: Thiru
 """
 
-import pandas as pd,numpy as np
+import pandas as pd,numpy as np,random
 from sklearn import metrics,cross_validation
 from sklearn.preprocessing import LabelEncoder,Imputer
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.cross_validation import StratifiedShuffleSplit
 import xgboost as xgb
 
 
@@ -66,6 +67,7 @@ def preprocess(df,impute):
     df = missingValues(df,impute=impute)
     df = fixSizeCode(df)
     df = oneHotEncode(df)
+    df.reset_index(inplace=True)
     return df
 
 """
@@ -77,10 +79,53 @@ Output:
 2) <numpy array> target: the labels of the training set
 """
 def splitDatasetTarget(df):
-    dataset = df.drop(['returnQuantity'], axis=1).values
-    target = df['returnQuantity'].values
+    dataset = df.drop(['returnQuantity'], axis=1)
+    target = df['returnQuantity']
     return dataset,target
+###################################################
+#          Stratified Sample Functions            #
+###################################################
 
+"""
+Input:
+ 1)<PD DF> dataset: input features
+ 2)<PD DF> target:  labels
+ 
+Output:
+
+1) <PD DF> Stratified sample of dataset
+2) <PD DF> Stratified sample of label
+"""
+#NOTE: Currently configured to only return ONE sample.
+# SELF CODED CAUSE SKLEARN IS A FKING BURDEN
+def stratifiedSampleGenerator(dataset,target,subsample_size=0.1):
+    dic={}
+    indexes = np.array([])
+    # find number of classes in sample
+    for label in target.unique(): 
+         labelSize = len(target[target==label]) 
+         dic[label] = int(labelSize * subsample_size)
+    # make a dataset of size sizeSample with ratio of classes in dic
+    for label in dic:
+        classIndex = target[target==label].index #obtain indexes of class
+        counts = dic[label]   #get number of times class occurs
+        newIndex = np.random.choice(classIndex,counts,replace=False)
+        indexes = np.concatenate((indexes,newIndex),axis=0)
+    indexes = indexes.astype(int)
+    sampleData = dataset.ix[indexes]
+    sampleData.drop('index',inplace=True,axis=1)
+    sampleTarget = target[indexes]
+    sampleData['returnQuantity'] = sampleTarget
+    sampleData.reset_index(inplace=True)
+    sampleData = sampleData.iloc[np.random.permutation(len(sampleData))]
+    sampleData.drop('index',inplace=True,axis=1)
+    sampleData.reset_index(inplace=True)
+    
+    newDataset = sampleData.drop('returnQuantity',axis=1)
+    newTarget = sampleData['returnQuantity']
+    return newDataset,newTarget
+            
+        
 ###################################################
 #                   Models                        #
 ###################################################
@@ -119,14 +164,33 @@ def accuracyChecker(dataset,target,clfs):
         clfs = [clfs]
     
     for classifier in clfs:
+        #check if xgboost. if so, pass to XGBChecker. else, continue normally.
         name= getNameFromModel(classifier)
+        if name == 'XGBClassifier':
+            XGBChecker(dataset,target,classifier)
+            continue
         print('******** '+name+' ********')
         predicted = cross_validation.cross_val_predict(classifier,dataset,target,cv=5)
-        print('5 fold cross val score for '+name+' : '+str(round(metrics.accuracy_score(target,predicted)),2))
+        print('5 fold cross val score for '+name+' : '+str(round(metrics.accuracy_score(target,predicted),2)))
         print(metrics.confusion_matrix(target,predicted,labels=[0,1,2,3,4,5]))
         print('Competition metric score : '+str(computeError(predicted,target)))
     
+def XGBChecker(dataset,target,classifier):
+    print('******** XGBClassifier ********')
+    cvList = []
+    predicted = []
+    sss = StratifiedShuffleSplit(target,5,test_size=0.2, random_state=0)    
+    for train_index, test_index in sss:
+        classifier.fit(dataset[train_index], target[train_index], early_stopping_rounds=25, 
+                       eval_metric="merror", eval_set=[(dataset[test_index], target[test_index])])
+        pred = classifier.predict(dataset[test_index])
+        predicted.append(pred)
+        cvList.append(metrics.accuracy_score(target[test_index],pred))
     
+    print('Xgboost 5 fold cv: '+str(cvList))
+    print('Average CV Score: '+ str(np.mean(cvList)))
+    print(metrics.confusion_matrix(target,predicted,labels=[0,1,2,3,4,5]))
+    print('Competition metric score : '+str(computeError(predicted,target)))
 
 """
 Input:
@@ -143,6 +207,7 @@ def run():
     train = pd.read_csv('E:/Git/DMC2016/thirufiles/orders_train.csv',sep=';')
     train = preprocess(train,False)
     dataset,target = splitDatasetTarget(train)
+    dataset,target=stratifiedSampleGenerator(dataset,target,subsample_szize=0.1)
     clfs = [randomForest()]
     accuracyChecker(dataset,target,clfs)
     
