@@ -1,0 +1,25 @@
+Classifier,Params,Cross Val,Sample_Size,Accuracy,conf_Matrix,Competition_Error,Scaled_Error
+XGBClassifier,"{'max_delta_step': 0, 'reg_alpha': 0, 'nthread': 8, 'base_score': 0.5, 'objective': 'multi:softprob', 'seed': 1, 'missing': None, 'scale_pos_weight': 1, 'n_estimators': 250, 'learning_rate': 0.1, 'min_child_weight': 1, 'subsample': 0.9, 'colsample_bylevel': 1, 'reg_lambda': 1, 'colsample_bytree': 1, 'max_depth': 8, 'silent': 1, 'gamma': 0}",FALSE,64949,0.615867835,"[[13494 16816    11     0     0     1]
+ [ 8009 26481    25     0     0     0]
+ [   29    54    25     0     0     0]
+ [    1     0     0     0     0     0]
+ [    2     0     0     0     0     0]
+ [    0     1     0     0     0     0]]",25004,250040
+RandomForestClassifier,"{'max_leaf_nodes': None, 'min_samples_leaf': 1, 'max_features': 'auto', 'verbose': 0, 'class_weight': {0: 2, 1: 1}, 'oob_score': False, 'warm_start': False, 'criterion': 'gini', 'n_estimators': 300, 'bootstrap': True, 'n_jobs': 8, 'min_weight_fraction_leaf': 0.0, 'max_depth': 8, 'random_state': 1, 'min_samples_split': 2}",FALSE,64949,0.494726632,"[[29293  1029     0     0     0     0]
+ [31676  2839     0     0     0     0]
+ [   81    27     0     0     0     0]
+ [    1     0     0     0     0     0]
+ [    2     0     0     0     0     0]
+ [    1     0     0     0     0     0]]",32910,329100
+ExtraTreesClassifier,"{'max_leaf_nodes': None, 'min_samples_leaf': 1, 'max_features': 'auto', 'verbose': 0, 'class_weight': {0: 1, 1: 2}, 'oob_score': False, 'warm_start': False, 'criterion': 'gini', 'n_estimators': 300, 'bootstrap': False, 'n_jobs': 8, 'min_weight_fraction_leaf': 0.0, 'max_depth': 8, 'random_state': 1, 'min_samples_split': 2}",FALSE,64949,0.546613497,"[[ 1005 29317     0     0     0     0]
+ [   18 34497     0     0     0     0]
+ [    2   106     0     0     0     0]
+ [    0     1     0     0     0     0]
+ [    1     1     0     0     0     0]
+ [    0     1     0     0     0     0]]",29458,294580
+Ensemble,"{'max_leaf_nodes': None, 'min_samples_leaf': 1, 'max_features': 'auto', 'verbose': 0, 'class_weight': {0: 1, 1: 2}, 'oob_score': False, 'warm_start': False, 'criterion': 'gini', 'n_estimators': 300, 'bootstrap': False, 'n_jobs': 8, 'min_weight_fraction_leaf': 0.0, 'max_depth': 8, 'random_state': 1, 'min_samples_split': 2}",TRUE,216494,0.62,"[[13495 16820     7     0     0     0]
+ [ 8009 26493    13     0     0     0]
+ [   29    72     7     0     0     0]
+ [    1     0     0     0     0     0]
+ [    2     0     0     0     0     0]
+ [    0     1     0     0     0     0]]",25001,250010
