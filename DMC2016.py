@@ -7,6 +7,7 @@ Created on Mon Apr 11 10:22:37 2016
 
 import pandas as pd,numpy as np
 from sklearn import metrics,cross_validation
+from sklearn.grid_search import GridSearchCV
 from sklearn.preprocessing import LabelEncoder,Imputer
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.cross_validation import StratifiedShuffleSplit,train_test_split
@@ -140,13 +141,29 @@ def stratifiedSampleGenerator(dataset,target,subsample_size=0.1):
 
 ##Dont use this for accuracyChecker. Ran 1+ hr and didnt stop.
 def xgBoost():
-    clf = xgb.XGBClassifier(max_depth = 6,n_estimators=200,nthread=8,seed=1,silent=1,
-                            objective= 'multi:softmax',learning_rate=0.1,subsample=0.9)
+    clf = xgb.XGBClassifier(max_depth = 8,n_estimators=200,nthread=8,seed=1,silent=1,
+                            objective= 'multi:softmax',learning_rate=0.2,subsample=0.9)
     return clf
     
 def randomForest():
     clf = RandomForestClassifier(max_depth=8, n_estimators=200,n_jobs=8,random_state=1)
     return clf
+
+###################################################
+#              Optimize Models                    #
+###################################################
+ 
+"""
+Input: params of form {'parameter':[<range>]}
+eg.
+
+{'max_depth':[5,6,7,8], 'subsample':[0.5,0.6]}
+"""  
+def optimizeClassifier(dataset,target,clf,params):
+    gsearch = GridSearchCV(estimator = clf, param_grid = params, 
+                           scoring='f1_macro',n_jobs=8,iid=True, cv=5) #write own scorer?
+    gsearch.fit(dataset,target)
+    print(gsearch.grid_scores_, gsearch.best_params_, gsearch.best_score_)
     
 ###################################################
 #                 Testing Models                  #
