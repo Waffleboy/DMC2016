@@ -68,7 +68,7 @@ def preprocess(df,impute):
     df = fixSizeCode(df)
     df = oneHotEncode(df)
     df.reset_index(inplace=True,drop=True)
-    df['sizeCode'] = df['sizeCode'].astype(int)
+    df.sizeCode = df.sizeCode.astype(np.int64)
     return df
 
 """
@@ -141,7 +141,7 @@ def stratifiedSampleGenerator(dataset,target,subsample_size=0.1):
 ##Dont use this for accuracyChecker. Ran 1+ hr and didnt stop.
 def xgBoost():
     clf = xgb.XGBClassifier(max_depth = 6,n_estimators=200,nthread=8,seed=1,silent=1,
-                            objective= 'multi:softmax',learning_rate=0.03,subsample=0.9)
+                            objective= 'multi:softmax',learning_rate=0.1,subsample=0.9)
     return clf
     
 def randomForest():
@@ -162,27 +162,49 @@ Input:
 1) <pd df> dataset: Pandas dataframe of features
 2) <pf df> target: Pandas 1D dataframe of target labels
 3) <List or classifier> clfs: List of classifiers of single classifier
-
+4) <Boolean> cross_val: if True, use cross validation. else, normal train test split.
 Output:
 1) None. Prints 5 fold cross val score, confusion matrix, and competition metric
 for all classifiers. 
 """
-def accuracyChecker(dataset,target,clfs):
+def accuracyChecker(dataset,target,clfs,cross_val):
     print('Beginning evaluation of models...')
     if type(clfs) != list:
         clfs = [clfs]
+    if cross_val == False:
+        trainx,testx,trainy,testy = train_test_split(dataset,target,test_size=0.3) #70 - 30 split
     
+    def errorScaler(error):
+        global datasetSize
+        return (error*datasetSize) / len(dataset)
+        
     for classifier in clfs:
         #check if xgboost. if so, pass to XGBChecker. else, continue normally.
         name= getNameFromModel(classifier)
-        if name == 'XGBClassifier':
+        if name == 'XGBClassifier' and cross_val == True:
             XGBChecker(dataset,target,classifier)
             continue
-        print('******** '+name+' ********')
-        predicted = cross_validation.cross_val_predict(classifier,dataset,target,cv=5)
-        print('5 fold cross val accuracy for '+name+': '+str( round(metrics.accuracy_score(target,predicted)*100,2) )+'%')
-        print(metrics.confusion_matrix(target,predicted,labels=[0,1,2,3,4,5]))
-        print(name + 'Competition metric score : '+str(computeError(predicted,target)))
+        if cross_val == True: #if cross val, do this. else, use train test split.
+            print('******** '+name+' ********')
+            predicted = cross_validation.cross_val_predict(classifier,dataset,target,cv=5)
+            print('5 fold cross val accuracy for '+name+': '+str( round(metrics.accuracy_score(target,predicted)*100,2) )+'%')
+            print(metrics.confusion_matrix(target,predicted,labels=[0,1,2,3,4,5]))
+            error = computeError(predicted,target)
+            print(name + 'Competition metric score : '+str(error))
+            print(name + 'Competition metric score adjusted for train size: '+str(errorScaler(error)))
+        else:
+            if name == 'XGBClassifier':
+                classifier.fit(trainx,trainy, early_stopping_rounds=25, 
+                       eval_metric="merror", eval_set=[(testx, testy)])
+            else:
+                classifier.fit(trainx,trainy)
+                
+            pred = classifier.predict(testx)
+            print('Test data accuracy for '+name+': '+ str(classifier.score(testx,testy)))
+            print(metrics.confusion_matrix(testy,pred,labels=[0,1,2,3,4,5]))
+            error = computeError(pred,testy)
+            print(name + ' Competition metric score : '+str(error))
+            print(name + 'Competition metric score adjusted for train size: '+str(errorScaler(error)))
 
 """
 Function made to specifically handle xgboost. works similar to accuracyChecker.
@@ -215,7 +237,7 @@ def XGBChecker(dataset,target,classifier):
     print('Average CV Score: '+ str(np.mean(cvList)))
     print(metrics.confusion_matrix(newTarget,predicted,labels=[0,1,2,3,4,5]))
     print('Competition metric score : '+str(computeError(predicted,newTarget)))
-
+    
 """
 Input:
 1) <PD DF> predicted: pandas df of predicted labels
@@ -230,12 +252,14 @@ def computeError(predicted,target):
 def run():
     train = pd.read_csv('E:/Git/DMC2016/thirufiles/orders_train.csv',sep=';')
     # train = pd.read_csv('/home/andre/workshop/dmc2016/andrefiles/orders_train.csv',sep=';')
-    train = preprocess(train,True)
+    train = preprocess(train,False)
+    global datasetSize
+    datasetSize = len(train)
     print('Processed data. Splitting..')
     dataset,target = splitDatasetTarget(train)
     dataset,target = stratifiedSampleGenerator(dataset,target,subsample_size=0.1)
-    clfs = [randomForest()]
-    accuracyChecker(dataset,target,clfs)
+    clfs = [xgBoost(),randomForest()]
+    accuracyChecker(dataset,target,clfs,False)
     
     
 if __name__ == '__main__':
