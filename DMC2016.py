@@ -68,6 +68,7 @@ def preprocess(df,impute):
     df = fixSizeCode(df)
     df = oneHotEncode(df)
     df.reset_index(inplace=True,drop=True)
+    df['sizeCode'] = df['sizeCode'].astype(int)
     return df
 
 """
@@ -191,29 +192,29 @@ def XGBChecker(dataset,target,classifier):
     print('******** XGBClassifier ********')
     cvList = []
     predicted = np.array([])
+    newTarget = np.array([]) #hackish solution. 
     fold = 0
     sss = StratifiedShuffleSplit(target,5,test_size=0.2, random_state=0)    
     for train_index, test_index in sss:
         fold+=1
         print('Training Xgboost fold '+str(fold))
-        trainX = dataset.ix[train_index].drop('index',axis=1).values # trainX[train_index] doesnt work tho it should
-        trainY = target[train_index].values
-        testX = dataset.ix[test_index].drop('index',axis=1).values
-        testY = target[test_index].values
-        
-        print(len(trainX),len(trainY),len(testX),len(testY))
+        trainX = dataset.iloc[train_index] # trainX[train_index] doesnt work tho it should
+        trainY = target[train_index]
+        testX = dataset.iloc[test_index]
+        testY = target[test_index]
         
         classifier.fit(trainX,trainY, early_stopping_rounds=25, 
                        eval_metric="merror", eval_set=[(testX, testY)])
                        
         pred = classifier.predict(testX)
-        predicted = np.concatenate([predicted,pred])
+        predicted = np.concatenate((predicted,pred))
+        newTarget = np.concatenate((testY,newTarget))
         cvList.append(metrics.accuracy_score(testY,pred))
     
     print('Xgboost 5 fold cv: '+str(cvList))
     print('Average CV Score: '+ str(np.mean(cvList)))
-    print(metrics.confusion_matrix(target,predicted,labels=[0,1,2,3,4,5]))
-    print('Competition metric score : '+str(computeError(predicted,target)))
+    print(metrics.confusion_matrix(newTarget,predicted,labels=[0,1,2,3,4,5]))
+    print('Competition metric score : '+str(computeError(predicted,newTarget)))
 
 """
 Input:
@@ -229,7 +230,7 @@ def computeError(predicted,target):
 def run():
     train = pd.read_csv('E:/Git/DMC2016/thirufiles/orders_train.csv',sep=';')
     # train = pd.read_csv('/home/andre/workshop/dmc2016/andrefiles/orders_train.csv',sep=';')
-    train = preprocess(train,False)
+    train = preprocess(train,True)
     print('Processed data. Splitting..')
     dataset,target = splitDatasetTarget(train)
     dataset,target = stratifiedSampleGenerator(dataset,target,subsample_size=0.1)
