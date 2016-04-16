@@ -235,7 +235,7 @@ def accuracyChecker(dataset,target,clfs,cross_val,ensemble,record):
         print('Ensemble Competition metric score adjusted for train size: '+str(scaledError))
         if record:
             params = classifier.get_params()
-            dataSize = len(dataset)
+            dataSize = len(testy)
             writeToCSV('Ensemble',params,True,dataSize,testAccuracy,confMat,error,scaledError)
 
 #Function to write inputs to CSV        
