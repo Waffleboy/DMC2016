@@ -98,7 +98,6 @@ Output:
 2) <PD DF> Stratified sample of label
 """
 #NOTE: Currently configured to only return ONE sample.
-# SELF CODED CAUSE SKLEARN IS A FKING BURDEN
 def stratifiedSampleGenerator(dataset,target,subsample_size=0.1):
     X_fit,X_eval,y_fit,y_eval= train_test_split(dataset,target,test_size=subsample_size,stratify=target)
     return X_eval.reset_index(drop=True),y_eval.reset_index(drop=True)

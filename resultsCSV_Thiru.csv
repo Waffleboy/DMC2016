@@ -23,3 +23,27 @@ Ensemble,"{'max_leaf_nodes': None, 'min_samples_leaf': 1, 'max_features': 'auto'
  [    1     0     0     0     0     0]
  [    2     0     0     0     0     0]
  [    0     1     0     0     0     0]]",25001,250010
+XGBClassifier,"{'reg_lambda': 1, 'objective': 'multi:softprob', 'max_depth': 8, 'scale_pos_weight': 1, 'seed': 1, 'nthread': 8, 'colsample_bytree': 1, 'base_score': 0.5, 'max_delta_step': 0, 'subsample': 0.8, 'n_estimators': 250, 'learning_rate': 0.1, 'reg_alpha': 0, 'missing': None, 'gamma': 0, 'silent': 1, 'min_child_weight': 1, 'colsample_bylevel': 1}",False,64949,0.615174983449,"[[13508 16788    28     0     2     2]
+ [ 8062 26420    25     0     0     0]
+ [   34    43    27     0     0     0]
+ [    6     2     0     0     0     0]
+ [    0     1     0     0     0     0]
+ [    0     0     1     0     0     0]]",25088,250880.0
+RandomForestClassifier,"{'criterion': 'gini', 'max_depth': 8, 'min_samples_leaf': 5, 'bootstrap': True, 'min_samples_split': 2, 'n_jobs': 8, 'verbose': 0, 'random_state': 1, 'n_estimators': 300, 'max_leaf_nodes': None, 'min_weight_fraction_leaf': 0.0, 'warm_start': False, 'max_features': 'auto', 'oob_score': False, 'class_weight': {0: 2, 1: 1}}",False,64949,0.493171565382,"[[29254  1074     0     0     0     0]
+ [31730  2777     0     0     0     0]
+ [   82    22     0     0     0     0]
+ [    8     0     0     0     0     0]
+ [    1     0     0     0     0     0]
+ [    1     0     0     0     0     0]]",33023,330230.0
+ExtraTreesClassifier,"{'criterion': 'gini', 'max_depth': 8, 'min_samples_leaf': 5, 'bootstrap': False, 'min_samples_split': 2, 'n_jobs': 8, 'verbose': 0, 'random_state': 1, 'n_estimators': 300, 'max_leaf_nodes': None, 'min_weight_fraction_leaf': 0.0, 'warm_start': False, 'max_features': 'auto', 'oob_score': False, 'class_weight': {0: 1, 1: 2}}",False,64949,0.546382546306,"[[  996 29332     0     0     0     0]
+ [   16 34491     0     0     0     0]
+ [    5    99     0     0     0     0]
+ [    2     6     0     0     0     0]
+ [    0     1     0     0     0     0]
+ [    1     0     0     0     0     0]]",29483,294830.0
+Ensemble,"{'criterion': 'gini', 'max_depth': 8, 'min_samples_leaf': 5, 'bootstrap': False, 'min_samples_split': 2, 'n_jobs': 8, 'verbose': 0, 'random_state': 1, 'n_estimators': 300, 'max_leaf_nodes': None, 'min_weight_fraction_leaf': 0.0, 'warm_start': False, 'max_features': 'auto', 'oob_score': False, 'class_weight': {0: 1, 1: 2}}",True,64949,0.62,"[[13528 16793     6     0     0     1]
+ [ 8076 26425     6     0     0     0]
+ [   52    49     3     0     0     0]
+ [    6     2     0     0     0     0]
+ [    0     1     0     0     0     0]
+ [    1     0     0     0     0     0]]",25075,250750.0
