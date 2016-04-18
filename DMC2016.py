@@ -7,6 +7,7 @@ Created on Mon Apr 11 10:22:37 2016
 import os,csv
 import pandas as pd,numpy as np
 from sklearn import metrics,cross_validation
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.grid_search import GridSearchCV
 from sklearn.preprocessing import LabelEncoder,Imputer
 from sklearn.ensemble import RandomForestClassifier,ExtraTreesClassifier
@@ -26,7 +27,7 @@ Output:
 """
 def preprocess(df,impute):
     def dropRedundantColumns(df):
-        dropCols = ['orderID','orderDate']
+        dropCols = ['orderID','orderDate','rrp']
         df=df.drop(dropCols,axis=1)
         return df
         
@@ -35,14 +36,26 @@ def preprocess(df,impute):
         if impute == False:
             return df.dropna()
         else:
+            try:
             #remove voucherID, impute the rest.
-            df = df[pd.notnull(df['voucherID'])]
-            imp = Imputer()
-            col1 = imp.fit_transform(df['rrp'].reshape(-1,1))
-            col2 = imp.fit_transform(df['productGroup'].reshape(-1,1)) #may not make sense
-            df['rrp'] = col1 #find proper way
-            df['productGroup'] = col2
+                df = df[pd.notnull(df['voucherID'])]
+                imp = Imputer()
+                col1 = imp.fit_transform(df['rrp'].reshape(-1,1))
+                col2 = imp.fit_transform(df['productGroup'].reshape(-1,1)) #may not make sense
+                df['rrp'] = col1 #find proper way
+                df['productGroup'] = col2
+            except:
+                print('Error with Imputation')
             return df
+    
+    def featureEngineering(df):
+        # 1) price*quantity = total price
+        # 2) How about include orderDate but in months? 
+        # 3) Colorcode in batches of 100/1000?
+        # 4) sizeCode to categories?
+        # Random: can drop payment method? plot graphs of paymentMethod with return quantity
+        pass
+    
             
     #deal with sizeCode being a bitch and 
     # having S,M,L,I,A, and values also. 
@@ -122,7 +135,10 @@ def extraTrees():
                                class_weight = {0:1,1:2})
     return clf
     
-
+def kNN():
+    clf = KNeighborsClassifier(n_neighbors=1,n_jobs=8)
+    return clf
+    
 ###################################################
 #              Optimize Models                    #
 ###################################################
@@ -294,7 +310,7 @@ def computeError(predicted,target):
 def run():
     train = pd.read_csv('E:/Git/DMC2016/thirufiles/orders_train.csv',sep=';')
     # train = pd.read_csv('/home/andre/workshop/dmc2016/andrefiles/orders_train.csv',sep=';')
-    train = preprocess(train,False) #False = dont use imputation
+    train = preprocess(train,False) #False = dont use imputation.
     global datasetSize
     datasetSize = len(train)
     print('Processed data. Splitting..')
