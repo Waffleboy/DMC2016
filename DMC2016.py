@@ -12,7 +12,10 @@ from sklearn.grid_search import GridSearchCV
 from sklearn.preprocessing import LabelEncoder,Imputer
 from sklearn.ensemble import RandomForestClassifier,ExtraTreesClassifier
 from sklearn.cross_validation import StratifiedShuffleSplit,train_test_split
+from sklearn.neural_network import MLPClassifier
 import xgboost as xgb
+
+#INTERESTING: For products where sizeCode was ALPHABETICAL and colorCode > 5000: over 50% of them were returned!
 
 ###################################################
 #              Preprocessing Methods              #
@@ -27,7 +30,7 @@ Output:
 """
 def preprocess(df,impute):
     def dropRedundantColumns(df):
-        dropCols = ['orderID','orderDate','rrp']
+        dropCols = ['orderID','rrp']
         df=df.drop(dropCols,axis=1)
         return df
         
@@ -54,20 +57,40 @@ def preprocess(df,impute):
         # 3) Colorcode in batches of 100/1000?
         # 4) sizeCode to categories?
         # Random: can drop payment method? plot graphs of paymentMethod with return quantity
-        pass
-    
+        def totalPrice(df):
+            df['totalPrice'] = df['price']*df['quantity']
+            return df
             
+        def orderDateToMonths(df):
+            df['orderDate']= pd.DatetimeIndex(pd.to_datetime(df['orderDate'])).month
+            return df
+        
+        def encodeColorCode(df):
+            pass
+        
+        df = totalPrice(df)
+        df = orderDateToMonths(df)
+        return df
+        
     #deal with sizeCode being a bitch and 
     # having S,M,L,I,A, and values also. 
     # Ideally, impute the S,M,L to numeric, but whats I,A??
     def fixSizeCode(df):
-        #TEMPORARY, JUST DROP INSTEAD. Find better way!
-        df = df.replace(['XS','S','M','L','I','A','XL'],np.nan)  
-        return df[pd.notnull(df['sizeCode'])]
+        #TEMPORARY, CONVERT TO NUMERIC. Find better way!
+        df = df.replace(['XS'],200)  
+        df = df.replace(['S'],210)  
+        df = df.replace(['M'],220)  
+        df = df.replace(['L'],230)  
+        df = df.replace(['XL'],240)  
+        df = df.replace(['I'],250) 
+        df = df.replace(['A'],260)  
+        df.sizeCode = df.sizeCode.astype(np.int64)
+        return df
         
     def oneHotEncode(df):
         #maybe can drop voucherID, articleID and stuff.
-        columnsToEncode=['paymentMethod','customerID','articleID','voucherID']
+     #  columnsToEncode=['paymentMethod','customerID','articleID','voucherID']
+        columnsToEncode = list(df.select_dtypes(include=['category','object']))
         le = LabelEncoder()
         for feature in columnsToEncode:
             try:
@@ -79,9 +102,9 @@ def preprocess(df,impute):
     df = dropRedundantColumns(df)
     df = missingValues(df,impute=impute)
     df = fixSizeCode(df)
+    df = featureEngineering(df)
     df = oneHotEncode(df)
     df.reset_index(inplace=True,drop=True)
-    df.sizeCode = df.sizeCode.astype(np.int64)
     return df
 
 """
@@ -137,6 +160,11 @@ def extraTrees():
     
 def kNN():
     clf = KNeighborsClassifier(n_neighbors=1,n_jobs=8)
+    return clf
+    
+def neuralNetwork():
+    clf = MLPClassifier(activation='tanh',hidden_layer_sizes = (500,300,6),max_iter=500,
+                        random_state=1,early_stopping=True)
     return clf
     
 ###################################################
@@ -319,5 +347,5 @@ def run():
     clfs = [xgBoost(),randomForest(),extraTrees()]
     accuracyChecker(dataset,target,clfs,False,True,True) # Dont use CV, Yes ensemble, Yes Record. 
     
-if __name__ == '__main__':
-	run()
+#if __name__ == '__main__':
+#	run()
