@@ -57,10 +57,15 @@ def preprocess(df,impute):
         # 3) Colorcode in batches of 100/1000?
         # 4) sizeCode to categories?
         # Random: can drop payment method? plot graphs of paymentMethod with return quantity
+        """
+        Create totalPrice column
+        """
         def totalPrice(df):
             df['totalPrice'] = df['price']*df['quantity']
             return df
-            
+        """
+        Convert orderDate to months (12/1/2016 --> 1)
+        """
         def orderDateToMonths(df):
             df['orderDate']= pd.DatetimeIndex(pd.to_datetime(df['orderDate'])).month
             return df
@@ -86,7 +91,9 @@ def preprocess(df,impute):
         df = df.replace(['A'],260)  
         df.sizeCode = df.sizeCode.astype(np.int64)
         return df
-        
+    """
+    one shot find all categorical columns and encode them. Cause its awesome like that.
+    """    
     def oneHotEncode(df):
         #maybe can drop voucherID, articleID and stuff.
      #  columnsToEncode=['paymentMethod','customerID','articleID','voucherID']
@@ -163,7 +170,7 @@ def kNN():
     return clf
     
 def neuralNetwork():
-    clf = MLPClassifier(activation='tanh',hidden_layer_sizes = (500,300,6),max_iter=500,
+    clf = MLPClassifier(activation='relu',hidden_layer_sizes = (500,300,6),max_iter=500,
                         random_state=1,early_stopping=True)
     return clf
     
@@ -220,7 +227,8 @@ def accuracyChecker(dataset,target,clfs,cross_val,ensemble,record):
     def errorScaler(error):
         global datasetSize
         return (error*datasetSize) / len(dataset)
-        
+    
+    ### BEGIN ACTUAL FUNCTIONS ###
     for classifier in clfs:
         #check if xgboost. if so, pass to XGBChecker. else, continue normally.
         name= getNameFromModel(classifier)
