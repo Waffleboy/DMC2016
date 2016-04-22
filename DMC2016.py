@@ -385,7 +385,7 @@ def run():
     dataset,target = splitDatasetTarget(train)
     dataset,target = stratifiedSampleGenerator(dataset,target,subsample_size=0.2)
     clfs = [xgBoost(),randomForest(),extraTrees()]
-    accuracyChecker(dataset,target,clfs,cross_Val=False,ensemble = True,record = True,predictTest=False) # Dont use CV, Yes ensemble, Yes Record. 
+    accuracyChecker(dataset,target,clfs,cross_val=False,ensemble = True,record = True,predictTest=False) # Dont use CV, Yes ensemble, Yes Record. 
     
 #if __name__ == '__main__':
 #	run()
