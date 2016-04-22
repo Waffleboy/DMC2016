@@ -363,6 +363,11 @@ Output:
 def computeError(predicted,target):
     return sum(abs(predicted-target))
     
+###################################################
+#               Generate Predictions              #
+###################################################
+# TO BE DONE
+    
 def run():
     train = pd.read_csv('E:/Git/DMC2016/thirufiles/orders_train.csv',sep=';')
     # train = pd.read_csv('/home/andre/workshop/dmc2016/andrefiles/orders_train.csv',sep=';')
