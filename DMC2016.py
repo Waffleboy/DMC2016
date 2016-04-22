@@ -234,7 +234,7 @@ Output:
 1) None. Prints 5 fold cross val score, confusion matrix, and competition metric
 for all classifiers. 
 """
-def accuracyChecker(dataset,target,clfs,cross_val,ensemble,record):
+def accuracyChecker(dataset,target,clfs,cross_val,ensemble,record,predictTest):
     print('Beginning evaluation of models...')
     #if one classifier, make it into lst so not to break function
     if type(clfs) != list:
@@ -249,7 +249,8 @@ def accuracyChecker(dataset,target,clfs,cross_val,ensemble,record):
         return (error*datasetSize) / len(dataset)
     
     ### BEGIN ACTUAL FUNCTIONS ###
-    for classifier in clfs:
+    for i in range(len(clfs)):
+        classifier = clfs[i]
         #check if xgboost. if so, pass to XGBChecker. else, continue normally.
         name= getNameFromModel(classifier)
         if name == 'XGBClassifier' and cross_val == True:
@@ -272,6 +273,7 @@ def accuracyChecker(dataset,target,clfs,cross_val,ensemble,record):
                        eval_metric="merror", eval_set=[(testx, testy)])
             else:
                 classifier.fit(trainx,trainy)
+            clfs[i] = classifier # set the fitted classifier to lst
             pred = classifier.predict(testx)
             if ensemble: #if ensemble, append to pred to use later
                 predictions.append(pred)
@@ -308,6 +310,10 @@ def accuracyChecker(dataset,target,clfs,cross_val,ensemble,record):
             params = classifier.get_params()
             dataSize = len(testy)
             writeToCSV('Ensemble',params,True,dataSize,testAccuracy,confMat,error,scaledError)
+        if predictTest:
+            clf.fit(predictions,testy)
+            clfs.append(clf)
+    return clfs
 
 #Function to write inputs to CSV        
 def writeToCSV(name,params,cross_val,size,testAccuracy,confMat,error,scaledError):
@@ -366,7 +372,9 @@ def computeError(predicted,target):
 ###################################################
 #               Generate Predictions              #
 ###################################################
-# TO BE DONE
+    
+def generatePredictions(clfs,ensemble):
+    pass
     
 def run():
     train = pd.read_csv('E:/Git/DMC2016/thirufiles/orders_train.csv',sep=';')
@@ -377,7 +385,7 @@ def run():
     dataset,target = splitDatasetTarget(train)
     dataset,target = stratifiedSampleGenerator(dataset,target,subsample_size=0.2)
     clfs = [xgBoost(),randomForest(),extraTrees()]
-    accuracyChecker(dataset,target,clfs,False,True,True) # Dont use CV, Yes ensemble, Yes Record. 
+    accuracyChecker(dataset,target,clfs,cross_Val=False,ensemble = True,record = True,predictTest=False) # Dont use CV, Yes ensemble, Yes Record. 
     
 #if __name__ == '__main__':
 #	run()
