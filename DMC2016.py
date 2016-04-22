@@ -7,6 +7,7 @@ Created on Mon Apr 11 10:22:37 2016
 import os,csv
 import pandas as pd,numpy as np
 from sklearn import metrics,cross_validation
+from sklearn.externals import joblib
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.grid_search import GridSearchCV
 from sklearn.preprocessing import LabelEncoder,Imputer
@@ -64,16 +65,30 @@ def preprocess(df,impute):
             df['totalPrice'] = df['price']*df['quantity']
             return df
         """
+        Create returnsPerCustomer column, find the total amount of returns per unique
+        customer.
+        """
+        def returnsPerCustomer(df): #SLOW.
+            ser = pd.Series(name= 'returnsPerCustomer', index=df.index)
+            data  = joblib.load('returnsPerCustomer.pkl')
+            for i in df.index:
+                #for each customer in customer ID, lookup data and fill in
+                ser.set_value(i,data[df['customerID'][i]]) 
+            df['returnsPerCustomer']=ser
+            return df
+                
+        """
         Convert orderDate to months (12/1/2016 --> 1)
         """
         def orderDateToMonths(df):
             df['orderDate']= pd.DatetimeIndex(pd.to_datetime(df['orderDate'])).month
             return df
         
-        def encodeColorCode(df):
+        def encodeColorCode(df): #SLOW. O(n^2)
             pass
         
         df = totalPrice(df)
+        df = returnsPerCustomer(df)
         df = orderDateToMonths(df)
         return df
         
@@ -106,10 +121,15 @@ def preprocess(df,impute):
                 print('Error encoding '+feature)
         return df
     
+    print('Dropping redundant columns..')
     df = dropRedundantColumns(df)
+    print('Dropping missing values: impute = '+str(impute))
     df = missingValues(df,impute=impute)
+    print('Replacing sizeCode..')
     df = fixSizeCode(df)
+    print('Running feature engineering..')
     df = featureEngineering(df)
+    print('Encoding all categorical and object vars to numeric')
     df = oneHotEncode(df)
     df.reset_index(inplace=True,drop=True)
     return df
@@ -349,9 +369,8 @@ def run():
     train = preprocess(train,False) #False = dont use imputation.
     global datasetSize
     datasetSize = len(train)
-    print('Processed data. Splitting..')
     dataset,target = splitDatasetTarget(train)
-    dataset,target = stratifiedSampleGenerator(dataset,target,subsample_size=0.1)
+    dataset,target = stratifiedSampleGenerator(dataset,target,subsample_size=0.2)
     clfs = [xgBoost(),randomForest(),extraTrees()]
     accuracyChecker(dataset,target,clfs,False,True,True) # Dont use CV, Yes ensemble, Yes Record. 
     
