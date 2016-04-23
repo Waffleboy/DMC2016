@@ -84,12 +84,14 @@ def preprocess(df,impute):
             df['orderDate']= pd.DatetimeIndex(pd.to_datetime(df['orderDate'])).month
             return df
         
-        def encodeColorCode(df): #SLOW. O(n^2)
-            pass
+        def encodeColorCode(df): #decreases accuracy
+            df['colorCode'] = df['colorCode']//100
+            return df
         
         df = totalPrice(df)
         df = returnsPerCustomer(df)
         df = orderDateToMonths(df)
+        #df = encodeColorCode(df)
         return df
         
     #deal with sizeCode being a bitch and 
@@ -383,10 +385,10 @@ def run():
     global datasetSize
     datasetSize = len(train)
     dataset,target = splitDatasetTarget(train)
-    dataset,target = stratifiedSampleGenerator(dataset,target,subsample_size=0.2)
+    dataset,target = stratifiedSampleGenerator(dataset,target,test_size=0.2)
     clfs = [xgBoost(),randomForest(),extraTrees(),kNN(),neuralNetwork()]
 
-    accuracyChecker(dataset,target,clfs,cross_val=False,ensemble = True,record = True,predictTest=False) # Dont use CV, Yes ensemble, Yes Record. 
+    clfs = accuracyChecker(dataset,target,clfs,cross_val=False,ensemble = True,record = True,predictTest=False) # Dont use CV, Yes ensemble, Yes Record. 
     
 #if __name__ == '__main__':
 #	run()
