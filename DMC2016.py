@@ -161,8 +161,8 @@ Output:
 2) <PD DF> Stratified sample of label
 """
 #NOTE: Currently configured to only return ONE sample.
-def stratifiedSampleGenerator(dataset,target,subsample_size=0.1):
-    X_fit,X_eval,y_fit,y_eval= train_test_split(dataset,target,test_size=subsample_size,stratify=target)
+def stratifiedSampleGenerator(dataset,target,test_size=0.1):
+    X_fit,X_eval,y_fit,y_eval= train_test_split(dataset,target,test_size=test_size,stratify=target)
     return X_eval.reset_index(drop=True),y_eval.reset_index(drop=True)
 
 ###################################################
@@ -297,7 +297,7 @@ def accuracyChecker(dataset,target,clfs,cross_val,ensemble,record,predictTest):
         predictions = predictions.T
         clf = ExtraTreesClassifier(max_depth = 5,n_jobs=8,n_estimators=100)
         predicted = cross_validation.cross_val_predict(clf,predictions,testy,cv=5)
-        testAccuracy = round(metrics.accuracy_score(testy,predicted),2)
+        testAccuracy = round(metrics.accuracy_score(testy,predicted),5)
         confMat = metrics.confusion_matrix(testy,predicted,labels=[0,1,2,3,4,5])
         error = computeError(predicted,testy)
         scaledError= errorScaler(error)
@@ -384,7 +384,8 @@ def run():
     datasetSize = len(train)
     dataset,target = splitDatasetTarget(train)
     dataset,target = stratifiedSampleGenerator(dataset,target,subsample_size=0.2)
-    clfs = [xgBoost(),randomForest(),extraTrees()]
+    clfs = [xgBoost(),randomForest(),extraTrees(),kNN(),neuralNetwork()]
+
     accuracyChecker(dataset,target,clfs,cross_val=False,ensemble = True,record = True,predictTest=False) # Dont use CV, Yes ensemble, Yes Record. 
     
 #if __name__ == '__main__':

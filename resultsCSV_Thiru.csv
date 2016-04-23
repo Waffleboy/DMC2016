@@ -125,3 +125,39 @@ Ensemble,"{'class_weight': {0: 1, 1: 2}, 'bootstrap': False, 'max_depth': 8, 'cr
  [    4     2     0     0     0     0]
  [    0     2     0     0     0     0]
  [    1     0     0     0     0     0]]",26841,249950.1234
+XGBClassifier,"{'silent': 1, 'scale_pos_weight': 1, 'max_depth': 8, 'colsample_bylevel': 1, 'gamma': 0, 'max_delta_step': 0, 'colsample_bytree': 1, 'learning_rate': 0.1, 'missing': None, 'reg_alpha': 0, 'seed': 1, 'objective': 'multi:softprob', 'nthread': 8, 'n_estimators': 250, 'subsample': 0.9, 'min_child_weight': 1, 'reg_lambda': 1, 'base_score': 0.5}",False,139489,0.699918990028,"[[36584 30624    23     2     0     1]
+ [10955 60986    80     0     0     2]
+ [   44   114    59     3     0     0]
+ [    3     3     2     2     0     0]
+ [    1     0     0     0     0     0]
+ [    1     0     0     0     0     0]]",41955,209774.729301
+RandomForestClassifier,"{'bootstrap': True, 'min_weight_fraction_leaf': 0.0, 'max_depth': 8, 'min_samples_split': 2, 'max_leaf_nodes': None, 'random_state': 1, 'oob_score': False, 'max_features': 'auto', 'min_samples_leaf': 1, 'class_weight': {0: 2, 1: 1}, 'warm_start': False, 'criterion': 'gini', 'verbose': 0, 'n_estimators': 300, 'n_jobs': 8}",False,139489,0.587021198804,"[[58519  8715     0     0     0     0]
+ [48659 23364     0     0     0     0]
+ [  126    94     0     0     0     0]
+ [    8     2     0     0     0     0]
+ [    1     0     0     0     0     0]
+ [    1     0     0     0     0     0]]",57757,288784.627345
+ExtraTreesClassifier,"{'bootstrap': False, 'min_weight_fraction_leaf': 0.0, 'max_depth': 8, 'min_samples_split': 2, 'max_leaf_nodes': None, 'random_state': 1, 'oob_score': False, 'max_features': 'auto', 'min_samples_leaf': 1, 'class_weight': {0: 1, 1: 2}, 'warm_start': False, 'criterion': 'gini', 'verbose': 0, 'n_estimators': 300, 'n_jobs': 8}",False,139489,0.537813017514,"[[ 3151 64083     0     0     0     0]
+ [  155 71868     0     0     0     0]
+ [    2   218     0     0     0     0]
+ [    0    10     0     0     0     0]
+ [    0     1     0     0     0     0]
+ [    1     0     0     0     0     0]]",64488,322439.583915
+KNeighborsClassifier,"{'n_neighbors': 1, 'metric': 'minkowski', 'algorithm': 'auto', 'p': 2, 'weights': 'uniform', 'leaf_size': 30, 'metric_params': None, 'n_jobs': 8}",False,139489,0.538379370416,"[[34604 32574    56     0     0     0]
+ [31492 40486    44     0     0     1]
+ [   93   119     8     0     0     0]
+ [    3     6     0     0     1     0]
+ [    1     0     0     0     0     0]
+ [    0     1     0     0     0     0]]",64561,322804.583444
+MLPClassifier,"{'validation_fraction': 0.1, 'beta_2': 0.999, 'momentum': 0.9, 'shuffle': True, 'random_state': 1, 'max_iter': 500, 'power_t': 0.5, 'beta_1': 0.9, 'hidden_layer_sizes': (500, 300, 6), 'learning_rate': 'constant', 'learning_rate_init': 0.001, 'tol': 0.0001, 'verbose': False, 'algorithm': 'adam', 'epsilon': 1e-08, 'early_stopping': True, 'batch_size': 'auto', 'warm_start': False, 'alpha': 0.0001, 'nesterovs_momentum': True, 'activation': 'relu'}",False,139489,0.516334621368,"[[    0 67234     0     0     0     0]
+ [    0 72023     0     0     0     0]
+ [    0   220     0     0     0     0]
+ [    0    10     0     0     0     0]
+ [    0     1     0     0     0     0]
+ [    0     1     0     0     0     0]]",67481,337404.564604
+Ensemble,"{'validation_fraction': 0.1, 'beta_2': 0.999, 'momentum': 0.9, 'shuffle': True, 'random_state': 1, 'max_iter': 500, 'power_t': 0.5, 'beta_1': 0.9, 'hidden_layer_sizes': (500, 300, 6), 'learning_rate': 'constant', 'learning_rate_init': 0.001, 'tol': 0.0001, 'verbose': False, 'algorithm': 'adam', 'epsilon': 1e-08, 'early_stopping': True, 'batch_size': 'auto', 'warm_start': False, 'alpha': 0.0001, 'nesterovs_momentum': True, 'activation': 'relu'}",True,139489,0.7,"[[36545 30685     2     2     0     0]
+ [10934 61082     7     0     0     0]
+ [   44   171     5     0     0     0]
+ [    5     5     0     0     0     0]
+ [    1     0     0     0     0     0]
+ [    1     0     0     0     0     0]]",41929,209644.729469
