@@ -31,7 +31,7 @@ Output:
 """
 def preprocess(df,impute):
     def dropRedundantColumns(df):
-        dropCols = ['orderID','rrp']
+        dropCols = ['orderID']
         df=df.drop(dropCols,axis=1)
         return df
         
