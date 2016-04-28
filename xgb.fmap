@@ -1,0 +1,15 @@
+0	orderDate	q
+1	articleID	q
+2	colorCode	q
+3	sizeCode	q
+4	productGroup	q
+5	quantity	q
+6	price	q
+7	rrp	q
+8	voucherID	q
+9	voucherAmount	q
+10	customerID	q
+11	deviceID	q
+12	paymentMethod	q
+13	totalPrice	q
+14	returnsPerCustomer	q

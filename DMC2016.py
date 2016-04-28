@@ -61,7 +61,7 @@ def preprocess(df,impute):
         """
         Create totalPrice column
         """
-        def totalPrice(df):
+        def totalPrice(df): #no point from feature importance graph
             df['totalPrice'] = df['price']*df['quantity']
             return df
         """
@@ -86,6 +86,10 @@ def preprocess(df,impute):
         
         def encodeColorCode(df): #decreases accuracy
             df['colorCode'] = df['colorCode']//100
+            return df
+            
+        def differenceRRPprice(df): 
+            df['rrp-price'] = df['rrp'] - df['price']
             return df
         
         df = totalPrice(df)
