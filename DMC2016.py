@@ -4,7 +4,7 @@ Created on Mon Apr 11 10:22:37 2016
 
 @author: Thiru
 """
-import os,csv
+import os,csv,socket
 import pandas as pd,numpy as np
 from sklearn import metrics,cross_validation
 from sklearn.externals import joblib
@@ -25,10 +25,13 @@ def loadDataFrame():
         df = pd.read_csv('preprocessed.csv')
         check = False
     else:
-        # df = pd.read_csv('E:/Git/DMC2016/thirufiles/orders_train.csv',sep=';')
         print("Loading original dataset")
-        df = pd.read_csv('/home/andre/workshop/dmc2016/andrefiles/orders_train.csv',sep=';')
-    df = preprocess(df,impute=False,engineerFeatures=check) #False = dont use imputation.
+        COM_NAME = socket.gethostname()
+        if COM_NAME == 'Waffle':
+            df = pd.read_csv('E:/Git/DMC2016/thirufiles/orders_train.csv',sep=';')
+        else:
+            df = pd.read_csv('/home/andre/workshop/dmc2016/andrefiles/orders_train.csv',sep=';')
+        df = preprocess(df,impute=False,engineerFeatures=check) #False = dont use imputation.
     return df
 
 ###################################################
@@ -67,86 +70,6 @@ def preprocess(df,impute,engineerFeatures):
             except:
                 print('Error with Imputation')
             return df
-    
-    def featureEngineering(df):
-        # 1) price*quantity = total price
-        # 2) How about include orderDate but in months? 
-        # 3) Colorcode in batches of 100/1000?
-        # 4) sizeCode to categories?
-        # 5) User pattern: frequency of purchase
-        # 6) User pattern: is big spender or not (mean or total amount spent)
-        # Random: can drop payment method? plot graphs of paymentMethod with return quantity
-        """
-        Create totalSpent by customer column as well as averageSpent
-        """
-        def userSpending(df):
-            totalSpent,count,averageSpent = {},{},{}
-            for i in df.index:
-                userId = df['customerID'][i]
-                price = df['price'][i]
-                if userId not in totalSpent:
-                    totalSpent[userId] = price
-                    count[userId] = 1
-                else:
-                    totalSpent[userId] += price
-                    count[userId] += 1
-            for i in totalSpent:
-                averageSpent[i] = totalSpent[i] / count[i]
-            df['totalSpent'] = df['customerID'].map(totalSpent)
-            df['averageSpent'] = df['customerID'].map(averageSpent)
-            return df
-
-        def purchaseFrequency(df):
-            users = df.groupby('customerID')
-            res = {}
-            for idx,user in users:
-                count = len(user)
-                averageFreq = count / 12 # find average purchase per month
-                res[idx] = averageFreq
-            df['purchaseFrequency'] = df['customerID'].map(res)
-            return df
-        """
-        Create totalPrice column
-        """
-        def totalPrice(df): #no point from feature importance graph
-            df['totalPrice'] = df['price']*df['quantity']
-            return df
-        """
-        Create returnsPerCustomer column, find the total amount of returns per unique
-        customer.
-        """
-        def returnsPerCustomer(df): #SLOW.
-            ser = pd.Series(name= 'returnsPerCustomer', index=df.index)
-            data  = joblib.load('returnsPerCustomer.pkl')
-            for i in df.index:
-                #for each customer in customer ID, lookup data and fill in
-                ser.set_value(i,data[df['customerID'][i]]) 
-            df['returnsPerCustomer']=ser
-            return df
-                
-        """
-        Convert orderDate to months (12/1/2016 --> 1)
-        """
-        def orderDateToMonths(df):
-            df['orderDate']= pd.DatetimeIndex(pd.to_datetime(df['orderDate'])).month
-            return df
-        
-        def encodeColorCode(df): #decreases accuracy
-            df['colorCode'] = df['colorCode']//100
-            return df
-            
-        def differenceRRPprice(df): 
-            df['rrp-price'] = df['rrp'] - df['price']
-            return df
-        
-        df = totalPrice(df)
-        df = returnsPerCustomer(df)
-        df = orderDateToMonths(df)
-        df = userSpending(df)
-        df = purchaseFrequency(df)
-        #df = encodeColorCode(df)
-        df.to_csv('preprocessed.csv',index=False)
-        return df
         
     #deal with sizeCode being a bitch and 
     # having S,M,L,I,A, and values also. 
@@ -162,6 +85,13 @@ def preprocess(df,impute,engineerFeatures):
         df = df.replace(['A'],260)  
         df.sizeCode = df.sizeCode.astype(np.int64)
         return df
+        
+    """
+    Convert orderDate to months (12/1/2016 --> 1)
+    """
+    def orderDateToMonths(df):
+        df['orderDate']= pd.DatetimeIndex(pd.to_datetime(df['orderDate'])).month
+        return df
     """
     one shot find all categorical columns and encode them. Cause its awesome like that.
     """    
@@ -176,20 +106,101 @@ def preprocess(df,impute,engineerFeatures):
             except:
                 print('Error encoding '+feature)
         return df
-    3
+    
     print('Dropping redundant columns..')
     df = dropRedundantColumns(df)
     print('Dropping missing values: impute = '+str(impute))
     df = missingValues(df,impute=impute)
     print('Replacing sizeCode..')
     df = fixSizeCode(df)
+    print('Changing orderDate to months..')
+    df=orderDateToMonths(df)
     if engineerFeatures:
         print('Running feature engineering..')
         df = featureEngineering(df)
     print('Encoding all categorical and object vars to numeric')
     df = oneHotEncode(df)
     df.reset_index(inplace=True,drop=True)
+    print('Processing done. Saving CSV')
+    df.to_csv('preprocessed.csv',index=False)
     return df
+    
+###################################################
+#           Feature Engineering Methods           #
+###################################################
+    
+def featureEngineering(df):
+        """
+        Create totalSpent by customer column as well as averageSpent
+        """
+        def userSpending(df):
+            print('Making: userSpending')
+            totalSpent,count,averageSpent = {},{},{}
+            for i in df.index:
+                userId = df['customerID'][i]
+                price = df['price'][i]
+                if userId not in totalSpent:
+                    totalSpent[userId] = price
+                    count[userId] = 1
+                else:
+                    totalSpent[userId] += price
+                    count[userId] += 1
+            for i in totalSpent:
+                averageSpent[i] = totalSpent[i] / count[i]
+            df['totalSpent'] = df['customerID'].map(totalSpent)
+            df['averageSpent'] = df['customerID'].map(averageSpent)
+            return df
+            
+        """
+        Create totalPrice column
+        """
+        def totalPrice(df): #no point from feature importance graph
+            print('Making: totalPrice')
+            df['totalPrice'] = df['price']*df['quantity']
+            return df
+        
+#        2 in 1 function to speed up as same loop.
+#        1) Create returnsPerCustomer column, find the total amount of returns per unique
+#        customer. < CURRENTLY COMMENTED OUT>
+#        2) create totalPurchases column
+#        3) create purchaseFrequency column
+        def purchasesAndReturns(df): #SLOW.
+            print('Making: returnsPerCustomer_totalPurchases')
+            #returnsPerCustomer = pd.Series(name= 'returnsPerCustomer', index=df.index)
+            totalPurchases = pd.Series(name= 'totalPurchases', index=df.index)
+            
+           # data  = joblib.load('returnsPerCustomer.pkl') #of form: {ID:quantity} eg, {a0123134: 5}
+            data2 = joblib.load('totalPurchasesPerCustomer.pkl') #of form: {ID:quantity} eg, {a0123134: 3}
+            
+            numMonths = len(df['orderDate'].unique()) #find num months in dataset
+            #for each customer in customer ID, lookup data and fill in
+            for i in df.index: 
+                customer = df['customerID'][i]
+               # returnsPerCustomer.set_value(i,data[customer]) #
+                totalPurchases.set_value(i,data2[customer]) 
+                
+            #df['returnsPerCustomer']=returnsPerCustomer
+            df['totalPurchases']=totalPurchases
+            df['purchaseFrequency'] = totalPurchases / numMonths
+            return df
+        
+        def encodeColorCode(df): #decreases accuracy
+            print('Encoding Color Code')
+            df['colorCode'] = df['colorCode']//100
+            return df
+            
+        def differenceRRPprice(df): 
+            print('Making: differenceRRPprice')
+            df['rrp-price'] = df['rrp'] - df['price']
+            return df
+            
+        df = totalPrice(df)
+        df = purchasesAndReturns(df)
+        df = userSpending(df)
+        df = differenceRRPprice(df)
+        #df = encodeColorCode(df)
+        print('Feature Engineering Done')
+        return df
 
 """
 Input:
