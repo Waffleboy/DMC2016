@@ -13,10 +13,23 @@ from sklearn.grid_search import GridSearchCV
 from sklearn.preprocessing import LabelEncoder,Imputer
 from sklearn.ensemble import RandomForestClassifier,ExtraTreesClassifier
 from sklearn.cross_validation import StratifiedShuffleSplit,train_test_split
-from sklearn.neural_network import MLPClassifier
+# from sklearn.neural_network import MLPClassifier
 import xgboost as xgb
 
 #INTERESTING: For products where sizeCode was ALPHABETICAL and colorCode > 5000: over 50% of them were returned!
+
+def loadDataFrame():
+    check = True
+    if os.path.exists('preprocessed.csv'):
+        print("Loading feature engineered dataset")
+        df = pd.read_csv('preprocessed.csv')
+        check = False
+    else:
+        # df = pd.read_csv('E:/Git/DMC2016/thirufiles/orders_train.csv',sep=';')
+        print("Loading original dataset")
+        df = pd.read_csv('/home/andre/workshop/dmc2016/andrefiles/orders_train.csv',sep=';')
+    df = preprocess(df,impute=False,engineerFeatures=check) #False = dont use imputation.
+    return df
 
 ###################################################
 #              Preprocessing Methods              #
@@ -29,10 +42,13 @@ Input:
 Output:
 <PD DF> Processed DF
 """
-def preprocess(df,impute):
+def preprocess(df,impute,engineerFeatures):
     def dropRedundantColumns(df):
-        dropCols = ['orderID']
-        df=df.drop(dropCols,axis=1)
+        try:
+            dropCols = ['orderID']
+            df=df.drop(dropCols,axis=1)
+        except:
+            pass
         return df
         
      #missing values are in productGroup,rrp,voucherID
@@ -57,7 +73,38 @@ def preprocess(df,impute):
         # 2) How about include orderDate but in months? 
         # 3) Colorcode in batches of 100/1000?
         # 4) sizeCode to categories?
+        # 5) User pattern: frequency of purchase
+        # 6) User pattern: is big spender or not (mean or total amount spent)
         # Random: can drop payment method? plot graphs of paymentMethod with return quantity
+        """
+        Create totalSpent by customer column as well as averageSpent
+        """
+        def userSpending(df):
+            totalSpent,count,averageSpent = {},{},{}
+            for i in df.index:
+                userId = df['customerID'][i]
+                price = df['price'][i]
+                if userId not in totalSpent:
+                    totalSpent[userId] = price
+                    count[userId] = 1
+                else:
+                    totalSpent[userId] += price
+                    count[userId] += 1
+            for i in totalSpent:
+                averageSpent[i] = totalSpent[i] / count[i]
+            df['totalSpent'] = df['customerID'].map(totalSpent)
+            df['averageSpent'] = df['customerID'].map(averageSpent)
+            return df
+
+        def purchaseFrequency(df):
+            users = df.groupby('customerID')
+            res = {}
+            for idx,user in users:
+                count = len(user)
+                averageFreq = count / 12 # find average purchase per month
+                res[idx] = averageFreq
+            df['purchaseFrequency'] = df['customerID'].map(res)
+            return df
         """
         Create totalPrice column
         """
@@ -95,7 +142,10 @@ def preprocess(df,impute):
         df = totalPrice(df)
         df = returnsPerCustomer(df)
         df = orderDateToMonths(df)
+        df = userSpending(df)
+        df = purchaseFrequency(df)
         #df = encodeColorCode(df)
+        df.to_csv('preprocessed.csv',index=False)
         return df
         
     #deal with sizeCode being a bitch and 
@@ -126,15 +176,16 @@ def preprocess(df,impute):
             except:
                 print('Error encoding '+feature)
         return df
-    
+    3
     print('Dropping redundant columns..')
     df = dropRedundantColumns(df)
     print('Dropping missing values: impute = '+str(impute))
     df = missingValues(df,impute=impute)
     print('Replacing sizeCode..')
     df = fixSizeCode(df)
-    print('Running feature engineering..')
-    df = featureEngineering(df)
+    if engineerFeatures:
+        print('Running feature engineering..')
+        df = featureEngineering(df)
     print('Encoding all categorical and object vars to numeric')
     df = oneHotEncode(df)
     df.reset_index(inplace=True,drop=True)
@@ -360,7 +411,7 @@ def XGBChecker(dataset,target,classifier):
         cvList.append(metrics.accuracy_score(testY,pred))
     
     print('Xgboost 5 fold cv: '+str(cvList))
-    print('Average CV Score: '+ str(np.mean(cvList)))
+    print('Average CV Score: '+ str(np.mean(cvList)) + ' +/- ' + str(np.std(cvList)))
     print(metrics.confusion_matrix(newTarget,predicted,labels=[0,1,2,3,4,5]))
     print('Competition metric score : '+str(computeError(predicted,newTarget)))        
 
@@ -383,16 +434,14 @@ def generatePredictions(clfs,ensemble):
     pass
     
 def run():
-    train = pd.read_csv('E:/Git/DMC2016/thirufiles/orders_train.csv',sep=';')
-    # train = pd.read_csv('/home/andre/workshop/dmc2016/andrefiles/orders_train.csv',sep=';')
-    train = preprocess(train,False) #False = dont use imputation.
+    train = loadDataFrame()
     global datasetSize
     datasetSize = len(train)
     dataset,target = splitDatasetTarget(train)
     dataset,target = stratifiedSampleGenerator(dataset,target,test_size=0.2)
-    clfs = [xgBoost(),randomForest(),extraTrees(),kNN(),neuralNetwork()]
-
+    # clfs = [xgBoost(),randomForest(),extraTrees(),kNN(),neuralNetwork()]
+    clfs = [xgBoost(),randomForest(),extraTrees(),kNN()]
     clfs = accuracyChecker(dataset,target,clfs,cross_val=False,ensemble = True,record = True,predictTest=False) # Dont use CV, Yes ensemble, Yes Record. 
     
-#if __name__ == '__main__':
-#	run()
+if __name__ == '__main__':
+	run()
