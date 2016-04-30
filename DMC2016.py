@@ -27,7 +27,7 @@ def loadDataFrame():
     else:
         print("Loading original dataset")
         COM_NAME = socket.gethostname()
-        if COM_NAME == 'Waffle':
+        if COM_NAME == 'ωαffιε':
             df = pd.read_csv('E:/Git/DMC2016/thirufiles/orders_train.csv',sep=';')
         else:
             df = pd.read_csv('/home/andre/workshop/dmc2016/andrefiles/orders_train.csv',sep=';')
@@ -54,7 +54,7 @@ def preprocess(df,impute,engineerFeatures):
             pass
         return df
         
-     #missing values are in productGroup,rrp,voucherID
+    #missing values are in productGroup,rrp,voucherID
     def missingValues(df,impute):
         if impute == False:
             return df.dropna()
@@ -130,77 +130,77 @@ def preprocess(df,impute,engineerFeatures):
 ###################################################
     
 def featureEngineering(df):
-        """
-        Create totalSpent by customer column as well as averageSpent
-        """
-        def userSpending(df):
-            print('Making: userSpending')
-            totalSpent,count,averageSpent = {},{},{}
-            for i in df.index:
-                userId = df['customerID'][i]
-                price = df['price'][i]
-                if userId not in totalSpent:
-                    totalSpent[userId] = price
-                    count[userId] = 1
-                else:
-                    totalSpent[userId] += price
-                    count[userId] += 1
-            for i in totalSpent:
-                averageSpent[i] = totalSpent[i] / count[i]
-            df['totalSpent'] = df['customerID'].map(totalSpent)
-            df['averageSpent'] = df['customerID'].map(averageSpent)
-            return df
-            
-        """
-        Create totalPrice column
-        """
-        def totalPrice(df): #no point from feature importance graph
-            print('Making: totalPrice')
-            df['totalPrice'] = df['price']*df['quantity']
-            return df
-        
-#        2 in 1 function to speed up as same loop.
-#        1) Create returnsPerCustomer column, find the total amount of returns per unique
-#        customer. < CURRENTLY COMMENTED OUT>
-#        2) create totalPurchases column
-#        3) create purchaseFrequency column
-        def purchasesAndReturns(df): #SLOW.
-            print('Making: returnsPerCustomer_totalPurchases')
-            #returnsPerCustomer = pd.Series(name= 'returnsPerCustomer', index=df.index)
-            totalPurchases = pd.Series(name= 'totalPurchases', index=df.index)
-            
-           # data  = joblib.load('returnsPerCustomer.pkl') #of form: {ID:quantity} eg, {a0123134: 5}
-            data2 = joblib.load('totalPurchasesPerCustomer.pkl') #of form: {ID:quantity} eg, {a0123134: 3}
-            
-            numMonths = len(df['orderDate'].unique()) #find num months in dataset
-            #for each customer in customer ID, lookup data and fill in
-            for i in df.index: 
-                customer = df['customerID'][i]
-               # returnsPerCustomer.set_value(i,data[customer]) #
-                totalPurchases.set_value(i,data2[customer]) 
-                
-            #df['returnsPerCustomer']=returnsPerCustomer
-            df['totalPurchases']=totalPurchases
-            df['purchaseFrequency'] = totalPurchases / numMonths
-            return df
-        
-        def encodeColorCode(df): #decreases accuracy
-            print('Encoding Color Code')
-            df['colorCode'] = df['colorCode']//100
-            return df
-            
-        def differenceRRPprice(df): 
-            print('Making: differenceRRPprice')
-            df['rrp-price'] = df['rrp'] - df['price']
-            return df
-            
-        df = totalPrice(df)
-        df = purchasesAndReturns(df)
-        df = userSpending(df)
-        df = differenceRRPprice(df)
-        #df = encodeColorCode(df)
-        print('Feature Engineering Done')
+    """
+    Create totalSpent by customer column as well as averageSpent
+    """
+    def userSpending(df):
+        print('Making: userSpending')
+        totalSpent,count,averageSpent = {},{},{}
+        for i in df.index:
+            userId = df['customerID'][i]
+            price = df['price'][i]
+            if userId not in totalSpent:
+                totalSpent[userId] = price
+                count[userId] = 1
+            else:
+                totalSpent[userId] += price
+                count[userId] += 1
+        for i in totalSpent:
+            averageSpent[i] = totalSpent[i] / count[i]
+        df['totalSpent'] = df['customerID'].map(totalSpent)
+        df['averageSpent'] = df['customerID'].map(averageSpent)
         return df
+        
+    """
+    Create totalPrice column
+    """
+    def totalPrice(df): #no point from feature importance graph
+        print('Making: totalPrice')
+        df['totalPrice'] = df['price']*df['quantity']
+        return df
+    
+    # 2 in 1 function to speed up as same loop.
+    # 1) Create returnsPerCustomer column, find the total amount of returns per unique
+    # customer. < CURRENTLY COMMENTED OUT>
+    # 2) create totalPurchases column
+    # 3) create purchaseFrequency column
+    def purchasesAndReturns(df): #SLOW.
+        print('Making: returnsPerCustomer_totalPurchases')
+        #returnsPerCustomer = pd.Series(name= 'returnsPerCustomer', index=df.index)
+        totalPurchases = pd.Series(name= 'totalPurchases', index=df.index)
+        
+       # data  = joblib.load('returnsPerCustomer.pkl') #of form: {ID:quantity} eg, {a0123134: 5}
+        data2 = joblib.load('totalPurchasesPerCustomer.pkl') #of form: {ID:quantity} eg, {a0123134: 3}
+        
+        numMonths = len(df['orderDate'].unique()) #find num months in dataset
+        #for each customer in customer ID, lookup data and fill in
+        for i in df.index: 
+            customer = df['customerID'][i]
+           # returnsPerCustomer.set_value(i,data[customer]) #
+            totalPurchases.set_value(i,data2[customer]) 
+            
+        #df['returnsPerCustomer']=returnsPerCustomer
+        df['totalPurchases']=totalPurchases
+        df['purchaseFrequency'] = totalPurchases / numMonths
+        return df
+    
+    def encodeColorCode(df): #decreases accuracy
+        print('Encoding Color Code')
+        df['colorCode'] = df['colorCode']//100
+        return df
+        
+    def differenceRRPprice(df): 
+        print('Making: differenceRRPprice')
+        df['rrp-price'] = df['rrp'] - df['price']
+        return df
+        
+    df = totalPrice(df)
+    df = purchasesAndReturns(df)
+    df = userSpending(df)
+    df = differenceRRPprice(df)
+    #df = encodeColorCode(df)
+    print('Feature Engineering Done')
+    return df
 
 """
 Input:
