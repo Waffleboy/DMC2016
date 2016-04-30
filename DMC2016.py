@@ -13,6 +13,7 @@ from sklearn.grid_search import GridSearchCV
 from sklearn.preprocessing import LabelEncoder,Imputer
 from sklearn.ensemble import RandomForestClassifier,ExtraTreesClassifier
 from sklearn.cross_validation import StratifiedShuffleSplit,train_test_split
+from collections import Counter
 # from sklearn.neural_network import MLPClassifier
 import xgboost as xgb
 
@@ -31,7 +32,7 @@ def loadDataFrame():
             df = pd.read_csv('E:/Git/DMC2016/thirufiles/orders_train.csv',sep=';')
         else:
             df = pd.read_csv('/home/andre/workshop/dmc2016/andrefiles/orders_train.csv',sep=';')
-        df = preprocess(df,impute=False,engineerFeatures=check) #False = dont use imputation.
+    df = preprocess(df,impute=False,engineerFeatures=check) #False = dont use imputation.
     return df
 
 ###################################################
@@ -131,6 +132,65 @@ def preprocess(df,impute,engineerFeatures):
     
 def featureEngineering(df):
     """
+    Returns a column describing how much of the original price was waived by the voucher
+    """
+    def priceDiscount(df):
+        print('Making: priceDiscount')
+        priceDiscount = df['voucherAmount'].divide(df['price'],fill_value=0.0)
+        priceDiscount[np.isinf(priceDiscount)] = 0.0
+        df['priceDiscount'] = priceDiscount
+        return df
+
+    """
+    Creates new column to indicate if a color is popular or not.
+    """
+    def colorPopularity(df):
+        print('Making: colorPopularity')
+        colorCount = Counter(df['colorCode'])
+        popularColors = [i[0] for i in colorCount.most_common(5)]
+        shittyColors = [j[0] for j in colorCount.most_common()[::-1] if j[1] < 5]
+        colorMap = {}
+        for color in df['colorCode']:
+            if color not in colorMap:
+                if color in popularColors:
+                    colorMap[color] = "popular"
+                elif color in shittyColors:
+                    colorMap[color] = "unpopular"
+                else:
+                    colorMap[color] = "neutral"
+        df['colorPopularity'] = df['colorCode'].map(colorMap)
+        return df
+
+    """
+    Add relative price of each transaction with respect to overall mean, mode, and median
+    """
+    def relativePrice(df):
+        print('Making: relativePrice')
+        # helper function to create dictionaries
+        def updateDict(curr,dic,stat):
+            if curr not in dic:
+                if curr > stat:
+                    dic[curr] = 1
+                else:
+                    dic[curr]=0
+        prices = df['price']
+        length = len(prices)
+        lst = prices.values.tolist()
+        mode = max(set(lst),key=lst.count)
+        median = np.median(prices)
+        mean = np.mean(prices)
+        meanMap, modeMap, medianMap = {},{},{}
+        for i in df.index:
+            curr = df['price'][i]
+            updateDict(curr,meanMap,mean)
+            updateDict(curr,modeMap,mode)
+            updateDict(curr,medianMap,median)
+        df['moreThanMean'] = df['price'].map(meanMap)
+        df['moreThanMedian'] = df['price'].map(medianMap)
+        df['moreThanMode'] = df['price'].map(modeMap)
+        return df
+
+    """
     Create totalSpent by customer column as well as averageSpent
     """
     def userSpending(df):
@@ -149,6 +209,7 @@ def featureEngineering(df):
             averageSpent[i] = totalSpent[i] / count[i]
         df['totalSpent'] = df['customerID'].map(totalSpent)
         df['averageSpent'] = df['customerID'].map(averageSpent)
+        df['yearlyExpense'] = df['averageSpent'] / df['totalSpent']
         return df
         
     """
@@ -198,6 +259,9 @@ def featureEngineering(df):
     df = purchasesAndReturns(df)
     df = userSpending(df)
     df = differenceRRPprice(df)
+    df = relativePrice(df)
+    df=  priceDiscount(df)
+    df = colorPopularity(df)
     #df = encodeColorCode(df)
     print('Feature Engineering Done')
     return df
