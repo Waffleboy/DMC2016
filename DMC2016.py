@@ -28,11 +28,11 @@ def loadDataFrame():
     else:
         print("Loading original dataset")
         COM_NAME = socket.gethostname()
-        if COM_NAME == 'ωαffιε':
+        if COM_NAME == 'Waffle':
             df = pd.read_csv('E:/Git/DMC2016/thirufiles/orders_train.csv',sep=';')
         else:
             df = pd.read_csv('/home/andre/workshop/dmc2016/andrefiles/orders_train.csv',sep=';')
-    df = preprocess(df,impute=False,engineerFeatures=check) #False = dont use imputation.
+        df = preprocess(df,impute=False,engineerFeatures=check) #False = dont use imputation.
     return df
 
 ###################################################
@@ -116,13 +116,14 @@ def preprocess(df,impute,engineerFeatures):
     df = fixSizeCode(df)
     print('Changing orderDate to months..')
     df=orderDateToMonths(df)
+    df.reset_index(inplace=True,drop=True)
     if engineerFeatures:
         print('Running feature engineering..')
         df = featureEngineering(df)
     print('Encoding all categorical and object vars to numeric')
     df = oneHotEncode(df)
-    df.reset_index(inplace=True,drop=True)
     print('Processing done. Saving CSV')
+    df.reset_index(inplace=True,drop=True)
     df.to_csv('preprocessed.csv',index=False)
     return df
     
@@ -146,18 +147,21 @@ def featureEngineering(df):
     """
     def colorPopularity(df):
         print('Making: colorPopularity')
-        colorCount = Counter(df['colorCode'])
-        popularColors = [i[0] for i in colorCount.most_common(5)]
-        shittyColors = [j[0] for j in colorCount.most_common()[::-1] if j[1] < 5]
-        colorMap = {}
-        for color in df['colorCode']:
-            if color not in colorMap:
-                if color in popularColors:
-                    colorMap[color] = "popular"
-                elif color in shittyColors:
-                    colorMap[color] = "unpopular"
-                else:
-                    colorMap[color] = "neutral"
+        if not os.path.exists('pickleFiles/colorMap.pkl'):
+            colorCount = Counter(df['colorCode'])
+            popularColors = [i[0] for i in colorCount.most_common(5)]
+            shittyColors = [j[0] for j in colorCount.most_common()[::-1] if j[1] < 5]
+            colorMap = {}
+            for color in df['colorCode']:
+                if color not in colorMap:
+                    if color in popularColors:
+                        colorMap[color] = "popular"
+                    elif color in shittyColors:
+                        colorMap[color] = "unpopular"
+                    else:
+                        colorMap[color] = "neutral"
+        else:
+            colorMap = joblib.load('pickleFiles/colorMap.pkl')
         df['colorPopularity'] = df['colorCode'].map(colorMap)
         return df
 
@@ -167,24 +171,29 @@ def featureEngineering(df):
     def relativePrice(df):
         print('Making: relativePrice')
         # helper function to create dictionaries
-        def updateDict(curr,dic,stat):
-            if curr not in dic:
-                if curr > stat:
-                    dic[curr] = 1
-                else:
-                    dic[curr]=0
-        prices = df['price']
-        length = len(prices)
-        lst = prices.values.tolist()
-        mode = max(set(lst),key=lst.count)
-        median = np.median(prices)
-        mean = np.mean(prices)
-        meanMap, modeMap, medianMap = {},{},{}
-        for i in df.index:
-            curr = df['price'][i]
-            updateDict(curr,meanMap,mean)
-            updateDict(curr,modeMap,mode)
-            updateDict(curr,medianMap,median)
+        if not os.path.exists('pickleFiles/meanMap.pkl') and not os.path.exists('pickleFiles/modeMap.pkl') and not os.path.exists('pickleFiles/medianMap.pkl'):
+            def updateDict(curr,dic,stat):
+                if curr not in dic:
+                    if curr > stat:
+                        dic[curr] = 1
+                    else:
+                        dic[curr]=0
+            prices = df['price']
+            lst = prices.values.tolist()
+            mode = max(set(lst),key=lst.count)
+            median = np.median(prices)
+            mean = np.mean(prices)
+            meanMap, modeMap, medianMap = {},{},{}
+            for i in df.index:
+                curr = df['price'][i]
+                updateDict(curr,meanMap,mean)
+                updateDict(curr,modeMap,mode)
+                updateDict(curr,medianMap,median)
+        else:
+            meanMap = joblib.load('pickleFiles/meanMap.pkl')
+            modeMap = joblib.load('pickleFiles/modeMap.pkl')
+            medianMap = joblib.load('pickleFiles/medianMap.pkl')
+        
         df['moreThanMean'] = df['price'].map(meanMap)
         df['moreThanMedian'] = df['price'].map(medianMap)
         df['moreThanMode'] = df['price'].map(modeMap)
@@ -195,16 +204,22 @@ def featureEngineering(df):
     """
     def userSpending(df):
         print('Making: userSpending')
-        totalSpent,count,averageSpent = {},{},{}
-        for i in df.index:
-            userId = df['customerID'][i]
-            price = df['price'][i]
-            if userId not in totalSpent:
-                totalSpent[userId] = price
-                count[userId] = 1
-            else:
-                totalSpent[userId] += price
-                count[userId] += 1
+        if not os.path.exists('pickleFiles/totalSpent.pkl') and not os.path.exists('pickleFiles/count.pkl') and not os.path.exists('pickleFiles/averageSpent.pkl'):
+            totalSpent,count,averageSpent = {},{},{}
+            for i in df.index:
+                userId = df['customerID'][i]
+                price = df['price'][i]
+                if userId not in totalSpent:
+                    totalSpent[userId] = price
+                    count[userId] = 1
+                else:
+                    totalSpent[userId] += price
+                    count[userId] += 1
+        else:
+            totalSpent = joblib.load('pickleFiles/totalSpent.pkl')
+            count = joblib.load('pickleFiles/count.pkl')
+            averageSpent = joblib.load('pickleFiles/averageSpent.pkl')
+            
         for i in totalSpent:
             averageSpent[i] = totalSpent[i] / count[i]
         df['totalSpent'] = df['customerID'].map(totalSpent)
@@ -222,25 +237,33 @@ def featureEngineering(df):
     
     # 2 in 1 function to speed up as same loop.
     # 1) Create returnsPerCustomer column, find the total amount of returns per unique
-    # customer. < CURRENTLY COMMENTED OUT>
+    # customer.
     # 2) create totalPurchases column
     # 3) create purchaseFrequency column
     def purchasesAndReturns(df): #SLOW.
         print('Making: returnsPerCustomer_totalPurchases')
-        #returnsPerCustomer = pd.Series(name= 'returnsPerCustomer', index=df.index)
+        returnsPerCustomer = pd.Series(name= 'returnsPerCustomer', index=df.index)
         totalPurchases = pd.Series(name= 'totalPurchases', index=df.index)
         
-       # data  = joblib.load('returnsPerCustomer.pkl') #of form: {ID:quantity} eg, {a0123134: 5}
-        data2 = joblib.load('totalPurchasesPerCustomer.pkl') #of form: {ID:quantity} eg, {a0123134: 3}
+        data  = joblib.load('pickleFiles/returnsPerCustomer.pkl') #of form: {ID:quantity} eg, {a0123134: 5}
+        data2 = joblib.load('pickleFiles/totalPurchasesPerCustomer.pkl') #of form: {ID:quantity} eg, {a0123134: 3}
         
         numMonths = len(df['orderDate'].unique()) #find num months in dataset
         #for each customer in customer ID, lookup data and fill in
         for i in df.index: 
             customer = df['customerID'][i]
-           # returnsPerCustomer.set_value(i,data[customer]) #
+            returnsPerCustomer.set_value(i,data[customer]) #
             totalPurchases.set_value(i,data2[customer]) 
-            
-        #df['returnsPerCustomer']=returnsPerCustomer
+        
+        def simulateTestData(returnsPerCustomer): # replace 2/3 with missing values.
+            import random as rand
+            length = len(returnsPerCustomer)
+            randomList = rand.sample(range(1,length), int(length*(2/3)))
+            returnsPerCustomer[randomList] = -99
+            return returnsPerCustomer
+        
+        returnsPerCustomer = simulateTestData(returnsPerCustomer)
+        df['returnsPerCustomer']=returnsPerCustomer
         df['totalPurchases']=totalPurchases
         df['purchaseFrequency'] = totalPurchases / numMonths
         return df
