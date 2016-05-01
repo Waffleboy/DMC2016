@@ -266,8 +266,8 @@ def featureEngineering(df):
         
         returnsPerCustomer = simulateTestData(returnsPerCustomer)
         df['returnsPerCustomer']=returnsPerCustomer
-        #df['totalPurchases']=totalPurchases
-        #df['purchaseFrequency'] = totalPurchases / numMonths
+        #df['totalPurchases']=totalPurchases                   #decreases accuracy
+        #df['purchaseFrequency'] = totalPurchases / numMonths  #decreases accuracy
         return df
     
     def encodeColorCode(df): #decreases accuracy
@@ -275,17 +275,19 @@ def featureEngineering(df):
         df['colorCode'] = df['colorCode']//100
         return df
         
-    def differenceRRPprice(df): 
+    def differenceRRPprice(df):#decreases accuracy
         print('Making: differenceRRPprice')
         df['rrp-price'] = df['rrp'] - df['price']
         return df
     
-    #Creates 2 columns
-    # 1) most frequent size bought by customer
-    # 2) difference between size bought and most Frequent size
+    #Creates 4 columns
+    # 1) modeSize: most frequent size bought by customer
+    # 2) differenceModeSize: difference between modeSize and specific item bought
+    # 3) averageSize: average(mean) of the size bought by customer
+    # 4) differenceAvgSize: difference between averageSize and specific item bought
     def modeSize(df):
         print('Making: mostFrequentSize and differenceSize')
-        if not os.path.exists('pickleFiles/modeSizesBought.pkl'):
+        if not os.path.exists('pickleFiles/modeSizesBought.pkl') and not os.path.exists('pickleFiles/averageSize.pkl'):
             allSize = {}
             for i in df.index: #find all sizes purchased by customers
                 currCust = df['customerID'][i]
@@ -294,31 +296,69 @@ def featureEngineering(df):
                 else:
                     allSize[currCust].append(df['sizeCode'][i])
             modeSize = {}
-            for entry in allSize:
-                if entry not in modeSize:
-                    mode = Counter(entry).most_common(1)[0][0]
-                    modeSize[entry] = mode
+            averageSizeData={}
+            #fill up modeSize and averageSizeData
+            for customer in allSize:
+                if customer not in modeSize:
+                    mode = Counter(allSize[customer]).most_common(1)[0][0]
+                    modeSize[customer] = mode
+                    avg = np.mean(allSize[customer])
+                    averageSizeData[customer] = avg
         else:
-            modeSize = joblib.load('pickleFiles/modeSizesBought.pkl')
+            modeSizeData = joblib.load('pickleFiles/modeSizesBought.pkl')
+            averageSizeData = joblib.load('pickleFiles/averageSize.pkl')
             
         mostFrequentSize = pd.Series(name= 'mostFrequentSize', index=df.index)
+        averageSize = pd.Series(name= 'averageSize', index=df.index)
+        
         for i in df.index:
             customer = df['customerID'][i]
-            mostFrequentSize.set_value(i,modeSize[customer])
+            mostFrequentSize.set_value(i,modeSizeData[customer])
+            averageSize.set_value(i,averageSizeData[customer])
         
-        df['mostFrequentSize'] = mostFrequentSize
-        df['differenceSize'] = abs(mostFrequentSize - df['sizeCode'])
+        df['modeSize'] = mostFrequentSize
+        df['differenceModeSize'] = abs(mostFrequentSize - df['sizeCode'])
+        df['averageSize'] = averageSize
+        df['differenceAvgSize'] = abs(averageSize - df['sizeCode'])
+        return df
+    
+    #Creates 2 columns
+    # 1) averageColor: the average colorCode that each customer buys
+    # 2) differenceAvgColor: the difference between the specific item bought and averageColor
+    def averageColor(df):
+        if not os.path.exists('pickleFiles/averageColor.pkl'):
+            allColor = {} #find all the colours that customers buy
+            for i in df.index:
+                currCustomer = df['customerID'][i]
+                if currCustomer not in allColor:
+                    allColor[currCustomer] = [df['colorCode'][i]]
+                else:
+                    allColor[currCustomer].append(df['colorCode'][i])
+            averageColor = {}
+            for entry in allColor:
+                if entry not in averageColor:
+                    averageColor[entry] = np.mean(allColor[entry])
+        else:
+            averageColor = joblib.load('averageColor.pkl')
+        avgcolor = pd.Series(name= 'averageColor', index=df.index)
+        for i in df.index:
+            customer = df['customerID'][i]
+            avgcolor.set_value(i,averageColor[customer])
+        df['averageColor'] = avgcolor
+        df['differenceAvgColor'] = avgcolor - df['colorCode']
         return df
         
-    #df = totalPrice(df) 
+        
+    #df = totalPrice(df)  #decreases accuracy
     df = purchasesAndReturns(df)
     df = userSpending(df) 
-    #df = differenceRRPprice(df) 
-    #df = relativePrice(df) 
+    #df = differenceRRPprice(df)  #decreases accuracy
+    #df = relativePrice(df)  #decreases accuracy
     df=  priceDiscount(df)
     df = colorPopularity(df)
     df = modeSize(df)
-    df = encodeColorCode(df)
+    #df = encodeColorCode(df) #decreases accuracy
+    df = averageColor(df)
     print('Feature Engineering Done')
     return df
 
@@ -359,7 +399,7 @@ def stratifiedSampleGenerator(dataset,target,test_size=0.1):
 
 ##Dont use this for accuracyChecker. Ran 1+ hr and didnt stop.
 def xgBoost():
-    clf = xgb.XGBClassifier(max_depth = 8,n_estimators=250,nthread=8,seed=1,silent=1,
+    clf = xgb.XGBClassifier(max_depth = 8,n_estimators=300,nthread=8,seed=1,silent=1,
                             objective= 'multi:softmax',learning_rate=0.1,subsample=0.9)
     return clf
     
@@ -409,20 +449,27 @@ def getNameFromModel(clf):
 
 #Iterates through dataset, drops a column and fits classifier to find change in accuracy
 def testFeatureAccuracy(dataset,target):
-    lst=[['Without Feature','Total Accuracy','Net Change'],['Baseline','0.667','-']]
-    initialAccuracy = 0.667
+    lst=[['Without Feature','Total Accuracy','Net Change']]
+    
+    #find base accuracy first
     trainx,testx,trainy,testy = train_test_split(dataset,target,test_size=0.2)
     classifier = xgBoost()
-    for col in list(dataset.columns): #for every column, drop that column then fit
+    classifier.fit(trainx,trainy, early_stopping_rounds=25, 
+                       eval_metric="merror", eval_set=[(testx, testy)])
+    score = classifier.score(testx,testy)
+    lst.append(['Baseline',score,'-'])
+    initialAccuracy = score
+    #for every column in columnsToTest, drop that column then fit
+    columnsToTest = ['differenceAvgColor','differenceModeSize','modeSize','averageSize','differenceAvgSize'] #fill in with column names
+    for col in columnsToTest: 
         trainx2 = trainx.drop(col,axis=1)
         testx2 = testx.drop(col,axis=1)
         classifier.fit(trainx2,trainy, early_stopping_rounds=25, 
                        eval_metric="merror", eval_set=[(testx2, testy)])
         score = classifier.score(testx2,testy)
         lst.append([col,score,round(score-initialAccuracy,3)]) #attach score
-    
     df = pd.DataFrame(lst)
-    df.to_csv('testAccuracy.csv',index=False)
+    df.to_csv('testAccuracy2.csv',index=False)
     return lst
         
 """
