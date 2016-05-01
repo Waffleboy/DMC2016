@@ -49,7 +49,7 @@ Output:
 def preprocess(df,impute,engineerFeatures):
     def dropRedundantColumns(df):
         try:
-            dropCols = ['orderID']
+            dropCols = ['orderID','quantity']
             df=df.drop(dropCols,axis=1)
         except:
             pass
@@ -123,6 +123,7 @@ def preprocess(df,impute,engineerFeatures):
     print('Encoding all categorical and object vars to numeric')
     df = oneHotEncode(df)
     print('Processing done. Saving CSV')
+    df.drop('voucherAmount',inplace=True,axis=1) #temporary hack
     df.reset_index(inplace=True,drop=True)
     df.to_csv('preprocessed.csv',index=False)
     return df
@@ -225,6 +226,7 @@ def featureEngineering(df):
         df['totalSpent'] = df['customerID'].map(totalSpent)
         df['averageSpent'] = df['customerID'].map(averageSpent)
         df['yearlyExpense'] = df['averageSpent'] / df['totalSpent']
+        df.drop('totalSpent',axis=1,inplace=True)
         return df
         
     """
@@ -264,8 +266,8 @@ def featureEngineering(df):
         
         returnsPerCustomer = simulateTestData(returnsPerCustomer)
         df['returnsPerCustomer']=returnsPerCustomer
-        df['totalPurchases']=totalPurchases
-        df['purchaseFrequency'] = totalPurchases / numMonths
+        #df['totalPurchases']=totalPurchases
+        #df['purchaseFrequency'] = totalPurchases / numMonths
         return df
     
     def encodeColorCode(df): #decreases accuracy
@@ -277,15 +279,46 @@ def featureEngineering(df):
         print('Making: differenceRRPprice')
         df['rrp-price'] = df['rrp'] - df['price']
         return df
+    
+    #Creates 2 columns
+    # 1) most frequent size bought by customer
+    # 2) difference between size bought and most Frequent size
+    def modeSize(df):
+        print('Making: mostFrequentSize and differenceSize')
+        if not os.path.exists('pickleFiles/modeSizesBought.pkl'):
+            allSize = {}
+            for i in df.index: #find all sizes purchased by customers
+                currCust = df['customerID'][i]
+                if currCust not in size:
+                    allSize[currCust] = [df['sizeCode'][i]]
+                else:
+                    allSize[currCust].append(df['sizeCode'][i])
+            modeSize = {}
+            for entry in allSize:
+                if entry not in modeSize:
+                    mode = Counter(entry).most_common(1)[0][0]
+                    modeSize[entry] = mode
+        else:
+            modeSize = joblib.load('pickleFiles/modeSizesBought.pkl')
+            
+        mostFrequentSize = pd.Series(name= 'mostFrequentSize', index=df.index)
+        for i in df.index:
+            customer = df['customerID'][i]
+            mostFrequentSize.set_value(i,modeSize[customer])
         
-    df = totalPrice(df)
+        df['mostFrequentSize'] = mostFrequentSize
+        df['differenceSize'] = abs(mostFrequentSize - df['sizeCode'])
+        return df
+        
+    #df = totalPrice(df) 
     df = purchasesAndReturns(df)
-    df = userSpending(df)
-    df = differenceRRPprice(df)
-    df = relativePrice(df)
+    df = userSpending(df) 
+    #df = differenceRRPprice(df) 
+    #df = relativePrice(df) 
     df=  priceDiscount(df)
     df = colorPopularity(df)
-    #df = encodeColorCode(df)
+    df = modeSize(df)
+    df = encodeColorCode(df)
     print('Feature Engineering Done')
     return df
 
