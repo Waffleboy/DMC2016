@@ -374,6 +374,24 @@ def getNameFromModel(clf):
     name = name[name.rfind('.')+1:name.rfind("'")] #subset from last . to last '
     return name
 
+#Iterates through dataset, drops a column and fits classifier to find change in accuracy
+def testFeatureAccuracy(dataset,target):
+    lst=[['Without Feature','Total Accuracy','Net Change'],['Baseline','0.667','-']]
+    initialAccuracy = 0.667
+    trainx,testx,trainy,testy = train_test_split(dataset,target,test_size=0.2)
+    classifier = xgBoost()
+    for col in list(dataset.columns): #for every column, drop that column then fit
+        trainx2 = trainx.drop(col,axis=1)
+        testx2 = testx.drop(col,axis=1)
+        classifier.fit(trainx2,trainy, early_stopping_rounds=25, 
+                       eval_metric="merror", eval_set=[(testx2, testy)])
+        score = classifier.score(testx2,testy)
+        lst.append([col,score,round(score-initialAccuracy,3)]) #attach score
+    
+    df = pd.DataFrame(lst)
+    df.to_csv('testAccuracy.csv',index=False)
+    return lst
+        
 """
 Input:
 1) <pd df> dataset: Pandas dataframe of features
