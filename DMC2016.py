@@ -17,8 +17,8 @@ from collections import Counter
 # from sklearn.neural_network import MLPClassifier
 import xgboost as xgb
 
-#INTERESTING: For products where sizeCode was ALPHABETICAL and colorCode > 5000: over 50% of them were returned!
-
+# If existing processed csv exists, load it. Else, load raw dataset and run
+# preprocessing and feature engineering
 def loadDataFrame():
     check = True
     if os.path.exists('preprocessed.csv'):
@@ -140,7 +140,7 @@ def featureEngineering(df):
         priceDiscount = df['voucherAmount'].divide(df['price'],fill_value=0.0)
         priceDiscount[np.isinf(priceDiscount)] = 0.0
         df['priceDiscount'] = priceDiscount
-        return df
+        return df.dropna() #fix missing values. Else first run cannot run
 
     """
     Creates new column to indicate if a color is popular or not.
@@ -396,7 +396,7 @@ def accuracyChecker(dataset,target,clfs,cross_val,ensemble,record,predictTest):
         clfs = [clfs] 
     #if not cross val, split now to save memory.
     if cross_val == False:
-        trainx,testx,trainy,testy = train_test_split(dataset,target,test_size=0.3) #70 - 30 split
+        trainx,testx,trainy,testy = train_test_split(dataset,target,test_size=0.2) #70 - 30 split
     predictions = [] 
     # function to show error wrt sample size of data
     def errorScaler(error):
@@ -523,6 +523,7 @@ Output:
 """
 def computeError(predicted,target):
     return sum(abs(predicted-target))
+
     
 ###################################################
 #               Generate Predictions              #
