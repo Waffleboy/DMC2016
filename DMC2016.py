@@ -28,7 +28,7 @@ def loadDataFrame():
     else:
         print("Loading original dataset")
         COM_NAME = socket.gethostname()
-        if COM_NAME == 'Waffle':
+        if COM_NAME == 'Waff1e':
             df = pd.read_csv('E:/Git/DMC2016/thirufiles/orders_train.csv',sep=';')
         else:
             df = pd.read_csv('/home/andre/workshop/dmc2016/andrefiles/orders_train.csv',sep=';')
@@ -167,40 +167,6 @@ def featureEngineering(df):
         return df
 
     """
-    Add relative price of each transaction with respect to overall mean, mode, and median
-    """
-    def relativePrice(df):
-        print('Making: relativePrice')
-        # helper function to create dictionaries
-        if not os.path.exists('pickleFiles/meanMap.pkl') and not os.path.exists('pickleFiles/modeMap.pkl') and not os.path.exists('pickleFiles/medianMap.pkl'):
-            def updateDict(curr,dic,stat):
-                if curr not in dic:
-                    if curr > stat:
-                        dic[curr] = 1
-                    else:
-                        dic[curr]=0
-            prices = df['price']
-            lst = prices.values.tolist()
-            mode = max(set(lst),key=lst.count)
-            median = np.median(prices)
-            mean = np.mean(prices)
-            meanMap, modeMap, medianMap = {},{},{}
-            for i in df.index:
-                curr = df['price'][i]
-                updateDict(curr,meanMap,mean)
-                updateDict(curr,modeMap,mode)
-                updateDict(curr,medianMap,median)
-        else:
-            meanMap = joblib.load('pickleFiles/meanMap.pkl')
-            modeMap = joblib.load('pickleFiles/modeMap.pkl')
-            medianMap = joblib.load('pickleFiles/medianMap.pkl')
-        
-        df['moreThanMean'] = df['price'].map(meanMap)
-        df['moreThanMedian'] = df['price'].map(medianMap)
-        df['moreThanMode'] = df['price'].map(modeMap)
-        return df
-
-    """
     Create totalSpent by customer column as well as averageSpent
     """
     def userSpending(df):
@@ -227,14 +193,6 @@ def featureEngineering(df):
         df['averageSpent'] = df['customerID'].map(averageSpent)
         df['yearlyExpense'] = df['averageSpent'] / df['totalSpent']
         df.drop('totalSpent',axis=1,inplace=True)
-        return df
-        
-    """
-    Create totalPrice column
-    """
-    def totalPrice(df): #no point from feature importance graph
-        print('Making: totalPrice')
-        df['totalPrice'] = df['price']*df['quantity']
         return df
     
     # 2 in 1 function to speed up as same loop.
@@ -269,15 +227,12 @@ def featureEngineering(df):
         #df['totalPurchases']=totalPurchases                   #decreases accuracy
         #df['purchaseFrequency'] = totalPurchases / numMonths  #decreases accuracy
         return df
-    
-    def encodeColorCode(df): #decreases accuracy
-        print('Encoding Color Code')
-        df['colorCode'] = df['colorCode']//100
-        return df
-        
-    def differenceRRPprice(df):#decreases accuracy
-        print('Making: differenceRRPprice')
-        df['rrp-price'] = df['rrp'] - df['price']
+
+    def quotientRRPprice(df):
+        print('Making: quotientRRPprice')
+        quotient = df['price'].divide(df['rrp'],fill_value=0.0)
+        quotient[np.isinf(quotient)] = 0.0
+        df['quotient'] = quotient
         return df
     
     #Creates 4 columns
@@ -349,16 +304,13 @@ def featureEngineering(df):
         return df
         
         
-    #df = totalPrice(df)  #decreases accuracy
     df = purchasesAndReturns(df)
     df = userSpending(df) 
-    #df = differenceRRPprice(df)  #decreases accuracy
-    #df = relativePrice(df)  #decreases accuracy
     df=  priceDiscount(df)
     df = colorPopularity(df)
     df = modeSize(df)
-    #df = encodeColorCode(df) #decreases accuracy
     df = averageColor(df)
+    df = quotientRRPprice(df) # to test this column
     print('Feature Engineering Done')
     return df
 
@@ -460,7 +412,7 @@ def testFeatureAccuracy(dataset,target):
     lst.append(['Baseline',score,'-'])
     initialAccuracy = score
     #for every column in columnsToTest, drop that column then fit
-    columnsToTest = ['differenceAvgColor','differenceModeSize','modeSize','averageSize','differenceAvgSize'] #fill in with column names
+    columnsToTest = ['quotient'] #fill in with column names
     for col in columnsToTest: 
         trainx2 = trainx.drop(col,axis=1)
         testx2 = testx.drop(col,axis=1)
@@ -636,9 +588,10 @@ def run():
     datasetSize = len(train)
     dataset,target = splitDatasetTarget(train)
     dataset,target = stratifiedSampleGenerator(dataset,target,test_size=0.2)
+    testFeatureAccuracy(dataset,target)
     # clfs = [xgBoost(),randomForest(),extraTrees(),kNN(),neuralNetwork()]
-    clfs = [xgBoost(),randomForest(),extraTrees(),kNN()]
-    clfs = accuracyChecker(dataset,target,clfs,cross_val=False,ensemble = True,record = True,predictTest=False) # Dont use CV, Yes ensemble, Yes Record. 
+    # clfs = [xgBoost(),randomForest(),extraTrees(),kNN()]
+    # clfs = accuracyChecker(dataset,target,clfs,cross_val=False,ensemble = True,record = True,predictTest=False) # Dont use CV, Yes ensemble, Yes Record. 
     
 if __name__ == '__main__':
 	run()
