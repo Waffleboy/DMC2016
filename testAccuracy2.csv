@@ -1,7 +1,0 @@
-Without Feature,Total Accuracy,baseline - score,,if score < baseline --> removing feature made it worse
-Baseline,0.673577058,-,,if score > baseline --> removing feature made it better.
-differenceAvgColor,0.675098511,-0.002,,
-differenceModeSize,0.675317426,-0.002,,
-modeSize,0.673741243,0,,
-averageSize,0.675372154,-0.002,,
-differenceAvgSize,0.673380035,0,,
