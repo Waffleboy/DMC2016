@@ -14,6 +14,7 @@ from sklearn.preprocessing import LabelEncoder,Imputer
 from sklearn.ensemble import RandomForestClassifier,ExtraTreesClassifier
 from sklearn.cross_validation import StratifiedShuffleSplit,train_test_split
 from collections import Counter
+from scipy import stats
 # from sklearn.neural_network import MLPClassifier
 import xgboost as xgb
 
@@ -227,13 +228,6 @@ def featureEngineering(df):
         #df['totalPurchases']=totalPurchases                   #decreases accuracy
         #df['purchaseFrequency'] = totalPurchases / numMonths  #decreases accuracy
         return df
-
-    def quotientRRPprice(df):
-        print('Making: quotientRRPprice')
-        quotient = df['price'].divide(df['rrp'],fill_value=0.0)
-        quotient[np.isinf(quotient)] = 0.0
-        df['quotient'] = quotient
-        return df
     
     #Creates 4 columns
     # 1) modeSize: most frequent size bought by customer
@@ -294,7 +288,7 @@ def featureEngineering(df):
                 if entry not in averageColor:
                     averageColor[entry] = np.mean(allColor[entry])
         else:
-            averageColor = joblib.load('averageColor.pkl')
+            averageColor = joblib.load('pickleFiles/averageColor.pkl')
         avgcolor = pd.Series(name= 'averageColor', index=df.index)
         for i in df.index:
             customer = df['customerID'][i]
@@ -302,15 +296,86 @@ def featureEngineering(df):
         df['averageColor'] = avgcolor
         df['differenceAvgColor'] = avgcolor - df['colorCode']
         return df
-        
+
+    """
+    Creates two columns: popular colors and size for each articleID.
+    """
+    def articlePopularity(df):
+        if not os.path.exists('pickleFiles/popularSizeByArticle.pkl') and not os.path.exists('pickleFiles/popularColorByArticle.pkl'):
+            popSizeDic, popColorDic = {}, {}
+            articles = df.groupby('articleID')
+            for idx,article in articles:
+                if idx not in popSizeDic or idx not in popColorDic:
+                    popColorDic[idx] = Counter(article['colorCode']).most_common()[0][0]
+                    popSizeDic[idx] = Counter(article['sizeCode']).most_common()[0][0]
+        else:
+            popColorDic = joblib.load('pickleFiles/popularColorByArticle.pkl')
+            popSizeDic = joblib.load('pickleFiles/popularSizeByArticle.pkl')
+        popColor = pd.Series(name='popularColorByArticle', index=df.index)
+        popSize = pd.Series(name='popularSizeByArticle', index=df.index)
+        for i in df.index:
+            article = df['articleID'][i]
+            try:
+                colorCheck = 1 if df['colorCode'][i] == popColorDic[article] else 0
+                sizeCheck = 1 if df['sizeCode'][i] == popSizeDic[article] else 0
+                popColor.set_value(i,colorCheck)
+                popSize.set_value(i,sizeCheck)
+            except:
+                pass
+        df['popularColorByArticle'] = popColor
+        df['popularSizeByArticle'] = popSize
+        return df
+
+    """
+    Generates a boolean column indicating if an article tends to be purchased moreso when a voucher is used
+    """
+    def cheapskateItems(df):
+        if not os.path.exists('pickleFiles/voucherToArticle.pkl'):
+            voucherDic = {}
+            vouchers = df.groupby('voucherID')
+            for idx,voucher in vouchers:
+                if idx not in voucherDic:
+                    voucherDic[idx] = Counter(voucher['articleID']).most_common()[0][0]
+        else:
+            voucherDic = joblib.load('pickleFiles/voucherToArticle.pkl')
+        articleSet = set(voucherDic.values())
+        cheapArticle = pd.Series(name='cheapArticle',index=df.index)
+        for i in df.index:
+            article = df['articleID'][i]
+            isCheap = 1 if article in articleSet else 0
+            cheapArticle.set_value(i,isCheap)
+        df['cheapArticle'] = cheapArticle
+        return df
+
+    """
+    Generates the standard deviation amongst counts of each product group
+    """
+    def varianceInProductGroups(df):
+        if not os.path.exists('pickleFiles/colorStd.pkl') and not os.path.exists('pickleFiles/sizeStd.pkl'):
+            products = df.groupby('productGroup')
+            sizeStd, colorStd = {},{}
+            for idx,product in products:
+                if idx not in sizeStd or idx not in colorStd:
+                    size = np.std(list(Counter(product['sizeCode']).values()))
+                    color = np.std(list(Counter(product['colorCode']).values()))
+                    sizeStd[idx] = size
+                    colorStd[idx] = color
+        else:
+            sizeStd = joblib.load('pickleFiles/sizeStd.pkl')
+            colorStd = joblib.load('pickleFiles/colorStd.pkl')
+        df['sizeStd'] = df['productGroup'].map(sizeStd)
+        df['colorStd'] = df['productGroup'].map(colorStd)
+        return df
         
     df = purchasesAndReturns(df)
     df = userSpending(df) 
-    df=  priceDiscount(df)
+    df = priceDiscount(df)
     df = colorPopularity(df)
     df = modeSize(df)
     df = averageColor(df)
-    df = quotientRRPprice(df) # to test this column
+    df = articlePopularity(df)
+    df = cheapskateItems(df)
+    df = varianceInProductGroups(df)
     print('Feature Engineering Done')
     return df
 
@@ -412,7 +477,7 @@ def testFeatureAccuracy(dataset,target):
     lst.append(['Baseline',score,'-'])
     initialAccuracy = score
     #for every column in columnsToTest, drop that column then fit
-    columnsToTest = ['quotient'] #fill in with column names
+    columnsToTest = ['popularColorByArticle','popularSizeByArticle','cheapArticle','sizeStd','colorStd'] #fill in with column names
     for col in columnsToTest: 
         trainx2 = trainx.drop(col,axis=1)
         testx2 = testx.drop(col,axis=1)
@@ -590,8 +655,8 @@ def run():
     dataset,target = stratifiedSampleGenerator(dataset,target,test_size=0.2)
     testFeatureAccuracy(dataset,target)
     # clfs = [xgBoost(),randomForest(),extraTrees(),kNN(),neuralNetwork()]
-    clfs = [xgBoost(),randomForest(),extraTrees(),kNN()]
-    clfs = accuracyChecker(dataset,target,clfs,cross_val=False,ensemble = True,record = True,predictTest=False) # Dont use CV, Yes ensemble, Yes Record. 
+    # clfs = [xgBoost(),randomForest(),extraTrees(),kNN()]
+    # clfs = accuracyChecker(dataset,target,clfs,cross_val=False,ensemble = True,record = True,predictTest=False) # Dont use CV, Yes ensemble, Yes Record. 
     
 if __name__ == '__main__':
 	run()
