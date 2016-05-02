@@ -419,7 +419,7 @@ def testFeatureAccuracy(dataset,target):
         classifier.fit(trainx2,trainy, early_stopping_rounds=25, 
                        eval_metric="merror", eval_set=[(testx2, testy)])
         score = classifier.score(testx2,testy)
-        lst.append([col,score,round(score-initialAccuracy,3)]) #attach score
+        lst.append([col,score,round(initialAccuracy-score,3)]) #attach score
     df = pd.DataFrame(lst)
     df.to_csv('testAccuracy2.csv',index=False)
     return lst
