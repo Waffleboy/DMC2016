@@ -446,12 +446,12 @@ def accuracyChecker(dataset,target,clfs,cross_val,ensemble,record,predictTest):
         clfs = [clfs] 
     #if not cross val, split now to save memory.
     if cross_val == False:
-        trainx,testx,trainy,testy = train_test_split(dataset,target,test_size=0.2) #70 - 30 split
+        trainx,testx,trainy,testy = train_test_split(dataset,target,test_size=0.2) #70 - 20 split
     predictions = [] 
     # function to show error wrt sample size of data
     def errorScaler(error):
         global datasetSize
-        return (error*datasetSize) / len(dataset)
+        return (error*datasetSize) / len(testx)
     
     ### BEGIN ACTUAL FUNCTIONS ###
     for i in range(len(clfs)):
@@ -590,8 +590,8 @@ def run():
     dataset,target = stratifiedSampleGenerator(dataset,target,test_size=0.2)
     testFeatureAccuracy(dataset,target)
     # clfs = [xgBoost(),randomForest(),extraTrees(),kNN(),neuralNetwork()]
-    # clfs = [xgBoost(),randomForest(),extraTrees(),kNN()]
-    # clfs = accuracyChecker(dataset,target,clfs,cross_val=False,ensemble = True,record = True,predictTest=False) # Dont use CV, Yes ensemble, Yes Record. 
+    clfs = [xgBoost(),randomForest(),extraTrees(),kNN()]
+    clfs = accuracyChecker(dataset,target,clfs,cross_val=False,ensemble = True,record = True,predictTest=False) # Dont use CV, Yes ensemble, Yes Record. 
     
 if __name__ == '__main__':
 	run()
