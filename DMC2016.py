@@ -373,15 +373,12 @@ def featureEngineering(df):
     def isRepeatCustomer(df):
         d = {}
         for i in df.index:
-            idx = df['customerID']
+            idx = df['customerID'][i]
             if idx not in d:
                 d[idx] = 1
             else:
                 d[idx] += 1
         singlePurchase = [key for key in d if d[key]==1]
-        for key in d:
-            if d[key] == 1:
-                singlePurchase.append(key)
         repeatCustomer = pd.Series(name='repeatCustomer',index=df.index)
         for j in df.index:
             isRepeat = 1 if df['customerID'][j] in repeatCustomer else 0
