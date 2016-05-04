@@ -4,7 +4,7 @@ Created on Mon Apr 11 10:22:37 2016
 
 @author: Thiru
 """
-import os,csv,socket
+import os,csv,socket,datetime
 import pandas as pd,numpy as np
 from sklearn import metrics,cross_validation
 from sklearn.externals import joblib
@@ -275,6 +275,7 @@ def featureEngineering(df):
     # 1) averageColor: the average colorCode that each customer buys
     # 2) differenceAvgColor: the difference between the specific item bought and averageColor
     def averageColor(df):
+        print("Making: averageColor")
         if not os.path.exists('pickleFiles/averageColor.pkl'):
             allColor = {} #find all the colours that customers buy
             for i in df.index:
@@ -301,6 +302,7 @@ def featureEngineering(df):
     Creates two columns: popular colors and size for each articleID.
     """
     def articlePopularity(df):
+        print("Making: articlePopularity")
         if not os.path.exists('pickleFiles/popularSizeByArticle.pkl') and not os.path.exists('pickleFiles/popularColorByArticle.pkl'):
             popSizeDic, popColorDic = {}, {}
             articles = df.groupby('articleID')
@@ -333,6 +335,7 @@ def featureEngineering(df):
     Generates a boolean column indicating if an article tends to be purchased moreso when a voucher is used
     """
     def cheapskateItems(df):
+        print("Making: cheapskateItems")
         if not os.path.exists('pickleFiles/voucherToArticle.pkl'):
             voucherDic = {}
             vouchers = df.groupby('voucherID')
@@ -354,6 +357,7 @@ def featureEngineering(df):
     Generates the standard deviation amongst counts of each product group
     """
     def varianceInProductGroups(df):
+        print("Making: varianceInProductGroups")
         if not os.path.exists('pickleFiles/colorStd.pkl') and not os.path.exists('pickleFiles/sizeStd.pkl'):
             products = df.groupby('productGroup')
             sizeStd, colorStd = {},{}
@@ -371,22 +375,37 @@ def featureEngineering(df):
         return df
 
     def isRepeatCustomer(df):
-        d = {}
-        for i in df.index:
-            idx = df['customerID'][i]
-            if idx not in d:
-                d[idx] = 1
-            else:
-                d[idx] += 1
-        singlePurchase = [key for key in d if d[key]==1]
-        repeatCustomer = pd.Series(name='repeatCustomer',index=df.index)
-        for j in df.index:
-            isRepeat = 1 if df['customerID'][j] in repeatCustomer else 0
-            repeatCustomer.set_value(j,isRepeat)
-        df['repeatCustomer'] = repeatCustomer
+        print("Making: isRepeatCustomer")
+        if not os.path.exists('pickleFiles/repeatCustomer.pkl'):
+            d = {}
+            for i in df.index:
+                idx = df['customerID'][i]
+                if idx not in d:
+                    d[idx] = 1
+                else:
+                    d[idx] += 1
+        else:
+            d = joblib.load('pickleFiles/repeatCustomer.pkl')
+        singlePurchase = {k:v-1 for k,v in d.items()} # hackish trick to force keys with value of 1 to 0, so that it evaluates to false
+        df['repeatCustomer'] = [1 if singlePurchase[df['customerID'][j]] else 0 for j in df.index]
         return df
 
     def weekendWeekday(df):
+        print("Making: weekendWeekday")
+        if not os.path.exists('pickleFiles/dayOfTheWeek.pkl'):
+            dateObject = pd.DatetimeIndex(pd.to_datetime(df['orderDate']))
+            dayOfTheWeek = {}
+            for i in df.index:
+                currDate = df['orderDate'][i]
+                if currDate not in dayOfTheWeek:
+                    dayInteger = dateObject[i].weekday()
+                    if dayInteger == 5 or dayInteger == 6: # weekends
+                        dayOfTheWeek[currDate] = 1
+                    else: # weekdays
+                        dayOfTheWeek[currDate] = 0
+        else:
+            dayOfTheWeek = joblib.load('pickleFiles/dayOfTheWeek.pkl')
+        df['isWeekend'] = df['orderDate'].map(dayOfTheWeek)
         return df
 
     def multiplePurchase(df):
@@ -398,8 +417,6 @@ def featureEngineering(df):
     def highReturnItem(df):
         return df
         
-    # 1) repeatcustomer column. Yes or no
-    # 2) whether they ordered on a weekend or weekday. 2 columns both boolean 
     # 3) did they buy more than one item. Yes or no
     # 4) online or offline payment? 
     # 5) more tricky. Whether that individual item is a high return item
@@ -413,6 +430,8 @@ def featureEngineering(df):
     df = articlePopularity(df)
     df = cheapskateItems(df)
     df = varianceInProductGroups(df)
+    df = isRepeatCustomer(df)
+    df = weekendWeekday(df)
     print('Feature Engineering Done')
     return df
 

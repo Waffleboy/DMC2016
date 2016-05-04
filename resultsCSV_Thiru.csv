@@ -419,3 +419,9 @@ XGBClassifier,"{'nthread': 8, 'colsample_bylevel': 1, 'learning_rate': 0.1, 'see
  [    5     3     0     0     0     0]
  [    1     2     0     0     0     0]
  [    2     1     0     0     0     0]]",29622,740545.784961
+XGBClassifier,"{'max_depth': 8, 'reg_lambda': 1, 'n_estimators': 300, 'nthread': 8, 'seed': 1, 'colsample_bytree': 1, 'gamma': 0, 'learning_rate': 0.1, 'base_score': 0.5, 'min_child_weight': 1, 'scale_pos_weight': 1, 'reg_alpha': 0, 'objective': 'multi:softmax', 'silent': 1, 'colsample_bylevel': 1, 'max_delta_step': 0, 'missing': None, 'subsample': 0.9}",False,91360,0.672165061296,"[[24393 18817    11     2     0     0]
+ [10972 36997    19     0     0     0]
+ [   33    86    18     0     0     0]
+ [    0     6     1     1     0     0]
+ [    1     0     1     0     0     0]
+ [    2     0     0     0     0     0]]",30017,750420.728754
