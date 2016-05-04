@@ -315,13 +315,16 @@ def featureEngineering(df):
         popSize = pd.Series(name='popularSizeByArticle', index=df.index)
         for i in df.index:
             article = df['articleID'][i]
-            try:
+            if article in popColorDic:
                 colorCheck = 1 if df['colorCode'][i] == popColorDic[article] else 0
+            else:
+                colorCheck = 0
+            if article in popSizeDic:
                 sizeCheck = 1 if df['sizeCode'][i] == popSizeDic[article] else 0
-                popColor.set_value(i,colorCheck)
-                popSize.set_value(i,sizeCheck)
-            except:
-                pass
+            else:
+                sizeCheck = 0
+            popColor.set_value(i,colorCheck)
+            popSize.set_value(i,sizeCheck)
         df['popularColorByArticle'] = popColor
         df['popularSizeByArticle'] = popSize
         return df
@@ -366,7 +369,28 @@ def featureEngineering(df):
         df['sizeStd'] = df['productGroup'].map(sizeStd)
         df['colorStd'] = df['productGroup'].map(colorStd)
         return df
+
+    def isRepeatCustomer(df):
+        return df
+
+    def weekendWeekday(df):
+        return df
+
+    def multiplePurchase(df):
+        return df
+
+    def paymentType(df):
+        return df
+
+    def highReturnItem(df):
+        return df
         
+    # 1) repeatcustomer column. Yes or no
+    # 2) whether they ordered on a weekend or weekday. 2 columns both boolean 
+    # 3) did they buy more than one item. Yes or no
+    # 4) online or offline payment? 
+    # 5) more tricky. Whether that individual item is a high return item
+
     df = purchasesAndReturns(df)
     df = userSpending(df) 
     df = priceDiscount(df)
@@ -388,6 +412,8 @@ Output:
 2) <numpy array> target: the labels of the training set
 """
 def splitDatasetTarget(df):
+    # dataset = df.drop(['returnQuantity'], axis=1)
+    dataset = df.drop(['returnQuantity','popularSizeByArticle','cheapArticle','sizeStd','colorStd','averageColor','differenceAvgColor','modeSize','differenceModeSize','averageSize','differenceAvgSize'], axis=1)
     dataset = df.drop(['returnQuantity'], axis=1)
     target = df['returnQuantity']
     return dataset,target
@@ -653,10 +679,10 @@ def run():
     datasetSize = len(train)
     dataset,target = splitDatasetTarget(train)
     dataset,target = stratifiedSampleGenerator(dataset,target,test_size=0.2)
-    testFeatureAccuracy(dataset,target)
+    # testFeatureAccuracy(dataset,target)
     # clfs = [xgBoost(),randomForest(),extraTrees(),kNN(),neuralNetwork()]
-    # clfs = [xgBoost(),randomForest(),extraTrees(),kNN()]
-    # clfs = accuracyChecker(dataset,target,clfs,cross_val=False,ensemble = True,record = True,predictTest=False) # Dont use CV, Yes ensemble, Yes Record. 
+    clfs = [xgBoost(),randomForest(),extraTrees(),kNN()]
+    clfs = accuracyChecker(dataset,target,clfs,cross_val=False,ensemble = True,record = True,predictTest=False) # Dont use CV, Yes ensemble, Yes Record. 
     
 if __name__ == '__main__':
 	run()
