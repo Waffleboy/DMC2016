@@ -415,11 +415,18 @@ def featureEngineering(df):
         return df
 
     def highReturnItem(df):
+        if not os.path.exists('pickleFiles/returnRates.pkl'):
+            articles = df.groupby('articleID')
+            returnRates = {}
+            for idx,article in articles:
+                returnRates[idx] = sum(article['returnQuantity'])
+        else:
+            returnRates = joblib.load('pickleFiles/returnRates.pkl')
+        df['returnRates'] = df['articleID'].map(returnRates)
         return df
         
     # 3) did they buy more than one item. Yes or no
     # 4) online or offline payment? 
-    # 5) more tricky. Whether that individual item is a high return item
 
     df = purchasesAndReturns(df)
     df = userSpending(df) 
