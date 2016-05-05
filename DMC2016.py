@@ -29,7 +29,7 @@ def loadDataFrame():
     else:
         print("Loading original dataset")
         COM_NAME = socket.gethostname()
-        if COM_NAME == 'Waff1e':
+        if COM_NAME == 'Waffle':
             df = pd.read_csv('E:/Git/DMC2016/thirufiles/orders_train.csv',sep=';')
         else:
             df = pd.read_csv('/home/andre/workshop/dmc2016/andrefiles/orders_train.csv',sep=';')
@@ -266,9 +266,9 @@ def featureEngineering(df):
             averageSize.set_value(i,averageSizeData[customer])
         
         df['modeSize'] = mostFrequentSize
-        df['differenceModeSize'] = abs(mostFrequentSize - df['sizeCode'])
-        df['averageSize'] = averageSize
-        df['differenceAvgSize'] = abs(averageSize - df['sizeCode'])
+        #df['differenceModeSize'] = abs(mostFrequentSize - df['sizeCode'])
+        #df['averageSize'] = averageSize
+        #df['differenceAvgSize'] = abs(averageSize - df['sizeCode'])
         return df
     
     #Creates 2 columns
@@ -295,7 +295,7 @@ def featureEngineering(df):
             customer = df['customerID'][i]
             avgcolor.set_value(i,averageColor[customer])
         df['averageColor'] = avgcolor
-        df['differenceAvgColor'] = avgcolor - df['colorCode']
+        #df['differenceAvgColor'] = avgcolor - df['colorCode']
         return df
 
     """
@@ -410,10 +410,10 @@ def featureEngineering(df):
             dayOfTheWeek = joblib.load('pickleFiles/dayOfTheWeek.pkl')
         df['isWeekend'] = df['orderDate'].map(dayOfTheWeek)
         return df
-
+        
     def multiplePurchase(df):
-        return df
-
+        pass
+    
     def paymentType(df):
         return df
 
@@ -426,6 +426,9 @@ def featureEngineering(df):
         else:
             returnRates = joblib.load('pickleFiles/returnRates.pkl')
         df['returnRates'] = df['articleID'].map(returnRates)
+        mean = df['returnRates'].mean()
+        df.ix[df.returnRates > mean,'returnRates'] = 0
+        df.ix[df.returnRates <= mean,'returnRates'] = 1
         return df
         
     # 3) did they buy more than one item. Yes or no
@@ -435,12 +438,12 @@ def featureEngineering(df):
     df = userSpending(df) 
     df = priceDiscount(df)
     df = colorPopularity(df)
-    df = modeSize(df)
-    df = averageColor(df)
+    df = modeSize(df) #ONLY modeSize. Excluded diffModeSize, diffAvgSize, avgSize
+    df = averageColor(df) #ONLY averageColor. Excluded diffAvgColor
     df = articlePopularity(df)
     df = cheapskateItems(df)
     df = varianceInProductGroups(df)
-    df = isRepeatCustomer(df)
+    df = isRepeatCustomer(df) #boolean version
     df = weekendWeekday(df)
     df = highReturnItem(df)
     print('Feature Engineering Done')
