@@ -308,8 +308,11 @@ def featureEngineering(df):
             articles = df.groupby('articleID')
             for idx,article in articles:
                 if idx not in popSizeDic or idx not in popColorDic:
-                    popColorDic[idx] = Counter(article['colorCode']).most_common()[0][0]
-                    popSizeDic[idx] = Counter(article['sizeCode']).most_common()[0][0]
+                    popColorDic[idx] = int(Counter(article['colorCode']).most_common()[0][0])
+                    try:
+                        popSizeDic[idx] = int(Counter(article['sizeCode']).most_common()[0][0])
+                    except:
+                        popSizeDic[idx] = np.nan
         else:
             popColorDic = joblib.load('pickleFiles/popularColorByArticle.pkl')
             popSizeDic = joblib.load('pickleFiles/popularSizeByArticle.pkl')
