@@ -458,7 +458,6 @@ Output:
 2) <numpy array> target: the labels of the training set
 """
 def splitDatasetTarget(df):
-    # dataset = df.drop(['returnQuantity'], axis=1)
     dataset = df.drop('returnQuantity', axis=1)
     target = df['returnQuantity']
     return dataset,target
