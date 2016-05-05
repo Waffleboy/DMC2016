@@ -459,8 +459,7 @@ Output:
 """
 def splitDatasetTarget(df):
     # dataset = df.drop(['returnQuantity'], axis=1)
-    dataset = df.drop(['returnQuantity','popularSizeByArticle','cheapArticle','sizeStd','colorStd','averageColor','differenceAvgColor','modeSize','differenceModeSize','averageSize','differenceAvgSize'], axis=1)
-    dataset = df.drop(['returnQuantity'], axis=1)
+    dataset = df.drop('returnQuantity', axis=1)
     target = df['returnQuantity']
     return dataset,target
 ###################################################
@@ -560,6 +559,44 @@ def testFeatureAccuracy(dataset,target):
     df = pd.DataFrame(lst)
     df.to_csv('testAccuracy2.csv',index=False)
     return lst
+
+#takes in dataset,target after stratifiedSampleGenerator
+#
+def testFeatureAccuracy2(dataset,target):
+    #dropped orderID and quantity as per preprocessing.
+    originalCols = ['orderDate', 'articleID', 'colorCode', 'sizeCode', 'productGroup',
+                    'price', 'rrp', 'voucherID','customerID', 'deviceID',
+                    'paymentMethod']
+    newFeatures = set(list(dataset.columns))
+    newFeatures = list(newFeatures.difference(originalCols))
+    accuracy = None
+    numNewFeatures = len(newFeatures) #find num new features 
+    classifier = xgBoost()
+    keep = []
+    discard = []
+    #find base score
+    trainx,testx,trainy,testy = train_test_split(dataset,target,test_size=0.2)
+    classifier.fit(trainx[originalCols],trainy, early_stopping_rounds=25, 
+                       eval_metric="merror", eval_set=[(testx[originalCols], testy)])
+    accuracy = classifier.score(testx[originalCols],testy)
+    #loop through new features, add one by one. if improve, keep. else discard
+    for i in range(numNewFeatures):
+        originalCols.append(newFeatures[i])
+        classifier.fit(trainx[originalCols],trainy, early_stopping_rounds=25, 
+                       eval_metric="merror", eval_set=[(testx[originalCols], testy)])
+                       
+        score = classifier.score(testx[originalCols],testy)
+        if accuracy < score: #if improve accuracy
+            accuracy = score
+            keep.append(newFeatures[i])
+        else:
+            originalCols.remove(newFeatures[i])
+            discard.append(newFeatures[i])
+    print('Final accuracy is '+str(accuracy))
+    ##In case 
+    joblib.dump(originalCols,'colstokeep.pkl')
+    return originalCols,keep,discard
+    
         
 """
 Input:
@@ -724,8 +761,9 @@ def run():
     global datasetSize
     datasetSize = len(train)
     dataset,target = splitDatasetTarget(train)
-    dataset,target = stratifiedSampleGenerator(dataset,target,test_size=0.2)
+    dataset,target = stratifiedSampleGenerator(dataset,target,test_size=0.25)
     # testFeatureAccuracy(dataset,target)
+    #### finalCols,keepList,discardList = testFeatureAccuracy2(dataset,target)
     # clfs = [xgBoost(),randomForest(),extraTrees(),kNN(),neuralNetwork()]
     clfs = [xgBoost(),randomForest(),extraTrees(),kNN()]
     clfs = accuracyChecker(dataset,target,clfs,cross_val=False,ensemble = True,record = True,predictTest=False) # Dont use CV, Yes ensemble, Yes Record. 
