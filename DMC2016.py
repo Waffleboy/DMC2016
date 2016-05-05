@@ -439,6 +439,7 @@ def featureEngineering(df):
     df = varianceInProductGroups(df)
     df = isRepeatCustomer(df)
     df = weekendWeekday(df)
+    df = highReturnItem(df)
     print('Feature Engineering Done')
     return df
 
