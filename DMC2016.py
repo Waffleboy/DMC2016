@@ -430,10 +430,51 @@ def featureEngineering(df):
         df.ix[df.returnRates > mean,'returnRates'] = 0
         df.ix[df.returnRates <= mean,'returnRates'] = 1
         return df
+    
+    def customerLikelyToReturn(df):
+        if not os.path.exists('pickleFiles/likelyreturn.pkl'):
+            dic = {}
+            for i in df.index:
+                currCustomer = df['customerID'][i]
+                if currCustomer not in dic:
+                    dic[currCustomer] = {df['articleID'][i]:df['returnQuantity'][i]}
+                else:
+                    article = df['articleID'][i]
+                    if article not in dic[currCustomer]:
+                        dic[currCustomer][article] = df['returnQuantity'][i]
+                    else:
+                        dic[currCustomer][article] += df['returnQuantity'][i]
+        else:
+            dic = joblib.load('likelyreturn.pkl')
+            
+        likelyReturn = pd.Series(name= 'likelyReturn', index=df.index)
         
+        def simulateTestData(col): # replace 2/3 with missing values.
+            import random as rand
+            length = len(col)
+            randomList = rand.sample(range(1,length), int(length*(2/3)))
+            col[randomList] = -99
+            return col
+            
+        for i in df.index:
+            currItem = df['articleID'][i]
+            currCustomer = df['customerID'][i]
+            try:
+                if dic[currCustomer][currItem] > 0:
+                    likelyReturn.set_value(i,1)
+                else:
+                    likelyReturn.set_value(i,0)
+            except:
+                likelyReturn.set_value(i,-99)
+        #for training data only. Comment out if not.
+        likelyReturn= simulateTestData(likelyReturn)
+        df['customerSpecificReturn'] = likelyReturn
+        return df
+            
+            
     # 3) did they buy more than one item. Yes or no
     # 4) online or offline payment? 
-
+    df = customerLikelyToReturn(df)
     df = purchasesAndReturns(df)
     df = userSpending(df) 
     df = priceDiscount(df)
@@ -574,12 +615,12 @@ def testFeatureAccuracy2(dataset,target):
     keep = []
     discard = []
     #find base score
+    print('Finding base Score')
     trainx,testx,trainy,testy = train_test_split(dataset,target,test_size=0.2)
-    classifier.fit(trainx[originalCols],trainy, early_stopping_rounds=25, 
-                       eval_metric="merror", eval_set=[(testx[originalCols], testy)])
     accuracy = classifier.score(testx[originalCols],testy)
     #loop through new features, add one by one. if improve, keep. else discard
     for i in range(numNewFeatures):
+        print('Doing feature '+str(i) +' out of total '+str(numNewFeatures))
         originalCols.append(newFeatures[i])
         classifier.fit(trainx[originalCols],trainy, early_stopping_rounds=25, 
                        eval_metric="merror", eval_set=[(testx[originalCols], testy)])
@@ -612,7 +653,9 @@ Output:
 1) None. Prints 5 fold cross val score, confusion matrix, and competition metric
 for all classifiers. 
 """
+accuracy=[]
 def accuracyChecker(dataset,target,clfs,cross_val,ensemble,record,predictTest):
+    global accuracy
     print('Beginning evaluation of models...')
     #if one classifier, make it into lst so not to break function
     if type(clfs) != list:
@@ -659,6 +702,8 @@ def accuracyChecker(dataset,target,clfs,cross_val,ensemble,record,predictTest):
             testAccuracy = classifier.score(testx,testy)
             confMat = metrics.confusion_matrix(testy,pred,labels=[0,1,2,3,4,5])
             error = computeError(pred,testy)
+            if name== 'XGBClassifier':
+                accuracy.append(testAccuracy)
             scaledError = errorScaler(error)
             print('Test data accuracy for '+name+': '+ str(testAccuracy))
             print(confMat)
@@ -761,11 +806,15 @@ def run():
     datasetSize = len(train)
     dataset,target = splitDatasetTarget(train)
     dataset,target = stratifiedSampleGenerator(dataset,target,test_size=0.25)
+    useThiruCol = False #chagne this to use my cols
+    if useThiruCol == True:
+        cols = joblib.load('pickleFiles/thirucols.pkl')
+        dataset = dataset[cols]
     # testFeatureAccuracy(dataset,target)
-    #### finalCols,keepList,discardList = testFeatureAccuracy2(dataset,target)
+    #finalCols,keepList,discardList = testFeatureAccuracy2(dataset,target)
     # clfs = [xgBoost(),randomForest(),extraTrees(),kNN(),neuralNetwork()]
     clfs = [xgBoost(),randomForest(),extraTrees(),kNN()]
-    clfs = accuracyChecker(dataset,target,clfs,cross_val=False,ensemble = True,record = True,predictTest=False) # Dont use CV, Yes ensemble, Yes Record. 
-    
+    clfs = accuracyChecker(dataset2,target,clfs,cross_val=False,ensemble = True,record = True,predictTest=False) # Dont use CV, Yes ensemble, Yes Record. 
+
 if __name__ == '__main__':
 	run()
