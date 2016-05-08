@@ -22,9 +22,9 @@ import xgboost as xgb
 # preprocessing and feature engineering
 def loadDataFrame():
     check = True
-    if os.path.exists('preprocessed.csv'):
+    if os.path.exists('preprocessed_train.csv'):
         print("Loading feature engineered dataset")
-        df = pd.read_csv('preprocessed.csv')
+        df = pd.read_csv('preprocessed_train.csv')
         check = False
     else:
         print("Loading original dataset")
@@ -33,9 +33,25 @@ def loadDataFrame():
             df = pd.read_csv('E:/Git/DMC2016/thirufiles/orders_train.csv',sep=';')
         else:
             df = pd.read_csv('/home/andre/workshop/dmc2016/andrefiles/orders_train.csv',sep=';')
-        df = preprocess(df,impute=False,engineerFeatures=check) #False = dont use imputation.
+        df = preprocess(df,impute=False,engineerFeatures=check,state=True) #False = dont use imputation.
     return df
 
+def loadTestDataFrame():
+    check = True
+    if os.path.exists('preprocessed_test.csv'):
+        print("Loading feature engineered dataset")
+        df = pd.read_csv('preprocessed_test.csv')
+        check = False
+    else:
+        print("Loading original dataset")
+        COM_NAME = socket.gethostname()
+        if COM_NAME == 'Waffle':
+            df = pd.read_csv('E:/Git/DMC2016/thirufiles/orders_class.csv',sep=';')
+        else:
+            df = pd.read_csv('/home/andre/workshop/dmc2016/andrefiles/orders_class.csv',sep=';')
+        df = preprocess(df,impute=False,engineerFeatures=check,state=False) #False = dont use imputation.
+    return df
+    
 ###################################################
 #              Preprocessing Methods              #
 ###################################################
@@ -43,23 +59,26 @@ def loadDataFrame():
 Input:
 1) <PD DF> df: pandas dataframe of training data
 2) <Boolean> impute: if True, do imputation for missing values rather than dropping
-
+3) <Boolean> engineerFeatures: if True, run feature engineering
+4) <Boolean> state: Identifier variable whether train or test set. True = train, False = test
 Output:
 <PD DF> Processed DF
 """
-def preprocess(df,impute,engineerFeatures):
+def preprocess(df,impute,engineerFeatures,state):
     def dropRedundantColumns(df):
         try:
-            dropCols = ['orderID','quantity']
+            dropCols = ['orderID']
             df=df.drop(dropCols,axis=1)
         except:
             pass
         return df
-        
     #missing values are in productGroup,rrp,voucherID
     def missingValues(df,impute):
         if impute == False:
-            return df.dropna()
+            df['productGroup'].fillna(-99,inplace=True)
+            df['rrp'].fillna(-99,inplace=True)
+            df['voucherID'].fillna(-99,inplace=True)
+            return df
         else:
             try:
             #remove voucherID, impute the rest.
@@ -120,20 +139,26 @@ def preprocess(df,impute,engineerFeatures):
     df.reset_index(inplace=True,drop=True)
     if engineerFeatures:
         print('Running feature engineering..')
-        df = featureEngineering(df)
+        df = featureEngineering(df,state)
     print('Encoding all categorical and object vars to numeric')
     df = oneHotEncode(df)
+    df.reset_index(inplace=True,drop=True)
+    if state == True: #replace proportion with -99
+        print('State is True, running simulateTest..')
+        df = simulateTest(df)
     print('Processing done. Saving CSV')
     df.drop('voucherAmount',inplace=True,axis=1) #temporary hack
-    df.reset_index(inplace=True,drop=True)
-    df.to_csv('preprocessed.csv',index=False)
+    if state == 1:
+        df.to_csv('preprocessed_train.csv',index=False)
+    else:
+        df.to_csv('preprocessed_test.csv',index=False)
     return df
     
 ###################################################
 #           Feature Engineering Methods           #
 ###################################################
-    
-def featureEngineering(df):
+#State: if True, means this is the training data. else, its test data.
+def featureEngineering(df,state):
     """
     Returns a column describing how much of the original price was waived by the voucher
     """
@@ -147,9 +172,15 @@ def featureEngineering(df):
     """
     Creates new column to indicate if a color is popular or not.
     """
+    #Different for train and test --> regenerate for test.
     def colorPopularity(df):
         print('Making: colorPopularity')
-        if not os.path.exists('pickleFiles/colorMap.pkl'):
+        nonlocal state
+        if state == True and os.path.exists('pickleFiles/colorMap.pkl'):
+            colorMap = joblib.load('pickleFiles/colorMap.pkl')
+        elif state==False and os.path.exists('pickleFiles/colorMap_test.pkl'):
+            colorMap = joblib.load('pickleFiles/colorMap_test.pkl')
+        else:
             colorCount = Counter(df['colorCode'])
             popularColors = [i[0] for i in colorCount.most_common(5)]
             shittyColors = [j[0] for j in colorCount.most_common()[::-1] if j[1] < 5]
@@ -162,17 +193,29 @@ def featureEngineering(df):
                         colorMap[color] = "unpopular"
                     else:
                         colorMap[color] = "neutral"
-        else:
-            colorMap = joblib.load('pickleFiles/colorMap.pkl')
+            if state == True:
+                joblib.dump(colorMap,'pickleFiles/colorMap.pkl')
+            else:
+                joblib.dump(colorMap,'pickleFiles/colorMap_test.pkl')
         df['colorPopularity'] = df['colorCode'].map(colorMap)
         return df
 
     """
     Create totalSpent by customer column as well as averageSpent
     """
+    #Different for train and test --> regenerate for test.
     def userSpending(df):
+        nonlocal state
         print('Making: userSpending')
-        if not os.path.exists('pickleFiles/totalSpent.pkl') and not os.path.exists('pickleFiles/count.pkl') and not os.path.exists('pickleFiles/averageSpent.pkl'):
+        if state == True and os.path.exists('pickleFiles/totalSpent.pkl'):
+            totalSpent = joblib.load('pickleFiles/totalSpent.pkl')
+            count = joblib.load('pickleFiles/count.pkl')
+            averageSpent = joblib.load('pickleFiles/averageSpent.pkl')
+        elif state == False and os.path.exists('pickleFiles/totalSpent_test.pkl'):
+            totalSpent = joblib.load('pickleFiles/totalSpent_test.pkl')
+            count = joblib.load('pickleFiles/count_test.pkl')
+            averageSpent = joblib.load('pickleFiles/averageSpent_test.pkl')
+        else:
             totalSpent,count,averageSpent = {},{},{}
             for i in df.index:
                 userId = df['customerID'][i]
@@ -183,11 +226,14 @@ def featureEngineering(df):
                 else:
                     totalSpent[userId] += price
                     count[userId] += 1
-        else:
-            totalSpent = joblib.load('pickleFiles/totalSpent.pkl')
-            count = joblib.load('pickleFiles/count.pkl')
-            averageSpent = joblib.load('pickleFiles/averageSpent.pkl')
-            
+            if state == True:
+                joblib.dump(totalSpent,'pickleFiles/totalSpent.pkl')
+                joblib.dump(count,'pickleFiles/count.pkl')
+                joblib.dump(averageSpent,'pickleFiles/averageSpent.pkl')
+            else:
+                joblib.dump(totalSpent,'pickleFiles/totalSpent_test.pkl')
+                joblib.dump(count,'pickleFiles/count_test.pkl')
+                joblib.dump(averageSpent,'pickleFiles/averageSpent_test.pkl')
         for i in totalSpent:
             averageSpent[i] = totalSpent[i] / count[i]
         df['totalSpent'] = df['customerID'].map(totalSpent)
@@ -201,42 +247,52 @@ def featureEngineering(df):
     # customer.
     # 2) create totalPurchases column
     # 3) create purchaseFrequency column
-    def purchasesAndReturns(df): #SLOW.
+    def purchasesAndReturns(df): 
         print('Making: returnsPerCustomer_totalPurchases')
-        returnsPerCustomer = pd.Series(name= 'returnsPerCustomer', index=df.index)
-        totalPurchases = pd.Series(name= 'totalPurchases', index=df.index)
-        
-        data  = joblib.load('pickleFiles/returnsPerCustomer.pkl') #of form: {ID:quantity} eg, {a0123134: 5}
-        data2 = joblib.load('pickleFiles/totalPurchasesPerCustomer.pkl') #of form: {ID:quantity} eg, {a0123134: 3}
-        
+        if state == True and os.path.exists('pickleFiles/returnsPerCustomer.pkl'):
+            data  = joblib.load('pickleFiles/returnsPerCustomer.pkl')
+            data2 = joblib.load('pickleFiles/totalPurchasesPerCustomer.pkl')
+        elif state == False and os.path.exists('pickleFiles/totalPurchasesPerCustomer.pkl'):
+            data  = joblib.load('pickleFiles/returnsPerCustomer.pkl') #TRAIN DATA
+            data2 = joblib.load('pickleFiles/totalPurchasesPerCustomer_test.pkl')
+        else: #make new purchases and returnsdata. returns data cannot do with test data.
+            if state == False and not os.path.exists('pickleFiles/returnsPerCustomer.pkl'):
+                raise Exception('Error with purchasesAndReturns. Cannot make returnsPerCustomer with test data or state set to False')
+            elif state == True and not os.path.exists('pickleFiles/returnsPerCustomer.pkl'):
+                data = {}
+                for i in df.index:
+                    cust = df['customerID'][i]
+                    newdf = df[df['customerID'] == cust]
+                    data[cust] = sum(newdf['returnQuantity'])
+                joblib.dump(data,'pickleFiles/returnsPerCustomer.pkl')
+            data2 = {}
+            for i in df.index:
+                cust = df['customerID'][i]
+                newdf = df[df['customerID'] == cust]
+                data2[cust] = sum(newdf['quantity'])
+            if state == 1:
+                joblib.dump(data2,'pickleFiles/totalPurchasesPerCustomer.pkl')
+            else:
+                joblib.dump(data2,'pickleFiles/totalPurchasesPerCustomer_test.pkl')
+    
         numMonths = len(df['orderDate'].unique()) #find num months in dataset
-        #for each customer in customer ID, lookup data and fill in
-        for i in df.index: 
-            customer = df['customerID'][i]
-            returnsPerCustomer.set_value(i,data[customer]) #
-            totalPurchases.set_value(i,data2[customer]) 
-        
-        def simulateTestData(returnsPerCustomer): # replace 2/3 with missing values.
-            import random as rand
-            length = len(returnsPerCustomer)
-            randomList = rand.sample(range(1,length), int(length*(2/3)))
-            returnsPerCustomer[randomList] = -99
-            return returnsPerCustomer
-        
-        returnsPerCustomer = simulateTestData(returnsPerCustomer)
-        df['returnsPerCustomer']=returnsPerCustomer
-        #df['totalPurchases']=totalPurchases                   #decreases accuracy
-        #df['purchaseFrequency'] = totalPurchases / numMonths  #decreases accuracy
+        df['returnsPerCustomer'] = df['customerID'].map(data)
+        df['totalPurchases'] = df['customerID'].map(data2) #decreases accuracy
+        df['purchaseFrequency'] = df['totalPurchases'] / numMonths  #decreases accuracy
         return df
     
-    #Creates 4 columns
+    #Creates 2 columns
     # 1) modeSize: most frequent size bought by customer
     # 2) differenceModeSize: difference between modeSize and specific item bought
-    # 3) averageSize: average(mean) of the size bought by customer
-    # 4) differenceAvgSize: difference between averageSize and specific item bought
+    #Different for train and test --> regenerate for test.
     def modeSize(df):
+        nonlocal state
         print('Making: mostFrequentSize and differenceSize')
-        if not os.path.exists('pickleFiles/modeSizesBought.pkl') and not os.path.exists('pickleFiles/averageSize.pkl'):
+        if state == 1 and os.path.exists('pickleFiles/modeSizesBought.pkl'):
+            modeSizeData = joblib.load('pickleFiles/modeSizesBought.pkl')
+        elif state == 0 and os.path.exists('pickleFiles/modeSizesBought_test.pkl'):
+            modeSizeData = joblib.load('pickleFiles/modeSizesBought_test.pkl')
+        else:
             allSize = {}
             for i in df.index: #find all sizes purchased by customers
                 currCust = df['customerID'][i]
@@ -245,38 +301,36 @@ def featureEngineering(df):
                 else:
                     allSize[currCust].append(df['sizeCode'][i])
             modeSize = {}
-            averageSizeData={}
-            #fill up modeSize and averageSizeData
             for customer in allSize:
                 if customer not in modeSize:
                     mode = Counter(allSize[customer]).most_common(1)[0][0]
                     modeSize[customer] = mode
-                    avg = np.mean(allSize[customer])
-                    averageSizeData[customer] = avg
-        else:
-            modeSizeData = joblib.load('pickleFiles/modeSizesBought.pkl')
-            averageSizeData = joblib.load('pickleFiles/averageSize.pkl')
-            
-        mostFrequentSize = pd.Series(name= 'mostFrequentSize', index=df.index)
-        averageSize = pd.Series(name= 'averageSize', index=df.index)
         
+            if state == 1:
+                joblib.dump(modeSize,'pickleFiles/modeSizesBought.pkl')
+            else:
+                joblib.dump(modeSize,'pickleFiles/modeSizesBought_test.pkl')
+                
+        mostFrequentSize = pd.Series(name= 'mostFrequentSize', index=df.index)
         for i in df.index:
             customer = df['customerID'][i]
             mostFrequentSize.set_value(i,modeSizeData[customer])
-            averageSize.set_value(i,averageSizeData[customer])
-        
         df['modeSize'] = mostFrequentSize
-        #df['differenceModeSize'] = abs(mostFrequentSize - df['sizeCode'])
-        #df['averageSize'] = averageSize
-        #df['differenceAvgSize'] = abs(averageSize - df['sizeCode'])
+        df['differenceModeSize'] = abs(mostFrequentSize - df['sizeCode'])
         return df
     
     #Creates 2 columns
     # 1) averageColor: the average colorCode that each customer buys
     # 2) differenceAvgColor: the difference between the specific item bought and averageColor
+    #Different for train and test --> regenerate for test.
     def averageColor(df):
+        nonlocal state
         print("Making: averageColor")
-        if not os.path.exists('pickleFiles/averageColor.pkl'):
+        if state == 1 and os.path.exists('pickleFiles/averageColor.pkl'):
+            averageColor = joblib.load('pickleFiles/averageColor.pkl')
+        elif state == 0 and os.path.exists('pickleFiles/averageColor_test.pkl'):
+            averageColor = joblib.load('pickleFiles/averageColor_test.pkl')
+        else:
             allColor = {} #find all the colours that customers buy
             for i in df.index:
                 currCustomer = df['customerID'][i]
@@ -288,22 +342,31 @@ def featureEngineering(df):
             for entry in allColor:
                 if entry not in averageColor:
                     averageColor[entry] = np.mean(allColor[entry])
-        else:
-            averageColor = joblib.load('pickleFiles/averageColor.pkl')
+            if state == 1:
+                joblib.dump(averageColor,'pickleFiles/averageColor.pkl')
+            else:
+                joblib.dump(averageColor,'pickleFiles/averageColor_test.pkl')
         avgcolor = pd.Series(name= 'averageColor', index=df.index)
         for i in df.index:
             customer = df['customerID'][i]
             avgcolor.set_value(i,averageColor[customer])
         df['averageColor'] = avgcolor
-        #df['differenceAvgColor'] = avgcolor - df['colorCode']
         return df
 
     """
     Creates two columns: popular colors and size for each articleID.
     """
+    #Different for train and test --> regenerate for test.
     def articlePopularity(df):
+        nonlocal state
         print("Making: articlePopularity")
-        if not os.path.exists('pickleFiles/popularSizeByArticle.pkl') and not os.path.exists('pickleFiles/popularColorByArticle.pkl'):
+        if state == 1 and os.path.exists('pickleFiles/popularSizeByArticle.pkl'):
+            popColorDic = joblib.load('pickleFiles/popularColorByArticle.pkl')
+            popSizeDic = joblib.load('pickleFiles/popularSizeByArticle.pkl')
+        elif state == 0 and os.path.exists('pickleFiles/popularSizeByArticle_test.pkl'):
+            popColorDic = joblib.load('pickleFiles/popularColorByArticle_test.pkl')
+            popSizeDic = joblib.load('pickleFiles/popularSizeByArticle_test.pkl')
+        else:
             popSizeDic, popColorDic = {}, {}
             articles = df.groupby('articleID')
             for idx,article in articles:
@@ -313,9 +376,9 @@ def featureEngineering(df):
                         popSizeDic[idx] = int(Counter(article['sizeCode']).most_common()[0][0])
                     except:
                         popSizeDic[idx] = np.nan
-        else:
-            popColorDic = joblib.load('pickleFiles/popularColorByArticle.pkl')
-            popSizeDic = joblib.load('pickleFiles/popularSizeByArticle.pkl')
+            if state == 1:
+                joblib.dump(popColorDic,'pickleFiles/popularColorByArticle.pkl')
+                joblib.dump(popSizeDic,'pickleFiles/popularSizeByArticle.pkl')
         popColor = pd.Series(name='popularColorByArticle', index=df.index)
         popSize = pd.Series(name='popularSizeByArticle', index=df.index)
         for i in df.index:
@@ -337,16 +400,25 @@ def featureEngineering(df):
     """
     Generates a boolean column indicating if an article tends to be purchased moreso when a voucher is used
     """
+    #Different for train and test --> regenerate for test.
     def cheapskateItems(df):
+        nonlocal state
         print("Making: cheapskateItems")
-        if not os.path.exists('pickleFiles/voucherToArticle.pkl'):
+        if state == 1 and os.path.exists('pickleFiles/voucherToArticle.pkl'):
+            voucherDic = joblib.load('pickleFiles/voucherToArticle.pkl')
+        elif state == 0 and os.path.exists('pickleFiles/voucherToArticle_test.pkl'):
+            voucherDic = joblib.load('pickleFiles/voucherToArticle_test.pkl')
+        else:
             voucherDic = {}
             vouchers = df.groupby('voucherID')
             for idx,voucher in vouchers:
                 if idx not in voucherDic:
                     voucherDic[idx] = Counter(voucher['articleID']).most_common()[0][0]
-        else:
-            voucherDic = joblib.load('pickleFiles/voucherToArticle.pkl')
+            if state == 1:
+                joblib.dump(voucherDic,'pickleFiles/voucherToArticle.pkl')
+            else:
+                joblib.dump(voucherDic,'pickleFiles/voucherToArticle_test.pkl')
+                
         articleSet = set(voucherDic.values())
         cheapArticle = pd.Series(name='cheapArticle',index=df.index)
         for i in df.index:
@@ -360,8 +432,15 @@ def featureEngineering(df):
     Generates the standard deviation amongst counts of each product group
     """
     def varianceInProductGroups(df):
+        nonlocal state
         print("Making: varianceInProductGroups")
-        if not os.path.exists('pickleFiles/colorStd.pkl') and not os.path.exists('pickleFiles/sizeStd.pkl'):
+        if state == 1 and os.path.exists('pickleFiles/colorStd.pkl'):
+            sizeStd = joblib.load('pickleFiles/sizeStd.pkl')
+            colorStd = joblib.load('pickleFiles/colorStd.pkl')
+        elif state == 0 and os.path.exists('pickleFiles/colorStd_test.pkl'):
+            sizeStd = joblib.load('pickleFiles/sizeStd_test.pkl')
+            colorStd = joblib.load('pickleFiles/colorStd_test.pkl')
+        else:
             products = df.groupby('productGroup')
             sizeStd, colorStd = {},{}
             for idx,product in products:
@@ -370,16 +449,24 @@ def featureEngineering(df):
                     color = np.std(list(Counter(product['colorCode']).values()))
                     sizeStd[idx] = size
                     colorStd[idx] = color
-        else:
-            sizeStd = joblib.load('pickleFiles/sizeStd.pkl')
-            colorStd = joblib.load('pickleFiles/colorStd.pkl')
+            if state == 1:
+                joblib.dump(sizeStd,'pickleFiles/sizeStd.pkl')
+                joblib.dump(colorStd,'pickleFiles/colorStd.pkl')
+            else:
+                joblib.dump(sizeStd,'pickleFiles/sizeStd_test.pkl')
+                joblib.dump(colorStd,'pickleFiles/colorStd_test.pkl')
         df['sizeStd'] = df['productGroup'].map(sizeStd)
         df['colorStd'] = df['productGroup'].map(colorStd)
         return df
-
+    #Different for train and test --> regenerate for test.
     def isRepeatCustomer(df):
+        nonlocal state
         print("Making: isRepeatCustomer")
-        if not os.path.exists('pickleFiles/repeatCustomer.pkl'):
+        if state == 1 and os.path.exists('pickleFiles/repeatCustomer.pkl'):
+            d = joblib.load('pickleFiles/repeatCustomer.pkl')
+        elif state == 0 and os.path.exists('pickleFiles/repeatCustomer_test.pkl'):
+            d = joblib.load('pickleFiles/repeatCustomer_test.pkl')
+        else:
             d = {}
             for i in df.index:
                 idx = df['customerID'][i]
@@ -387,15 +474,22 @@ def featureEngineering(df):
                     d[idx] = 1
                 else:
                     d[idx] += 1
-        else:
-            d = joblib.load('pickleFiles/repeatCustomer.pkl')
+            if state == 1:
+                joblib.dump(d,'pickleFiles/repeatCustomer.pkl')
+            else:
+                joblib.dump(d,'pickleFiles/repeatCustomer_test.pkl')
         singlePurchase = {k:v-1 for k,v in d.items()} # hackish trick to force keys with value of 1 to 0, so that it evaluates to false
         df['repeatCustomer'] = [1 if singlePurchase[df['customerID'][j]] else 0 for j in df.index]
         return df
-
+    #Different for train and test --> regenerate for test.
     def weekendWeekday(df):
+        nonlocal state
         print("Making: weekendWeekday")
-        if not os.path.exists('pickleFiles/dayOfTheWeek.pkl'):
+        if state == 1 and os.path.exists('pickleFiles/dayOfTheWeek.pkl'):
+            dayOfTheWeek = joblib.load('pickleFiles/dayOfTheWeek.pkl')
+        elif state == 0 and os.path.exists('pickleFiles/dayOfTheWeek_test.pkl'):
+            dayOfTheWeek = joblib.load('pickleFiles/dayOfTheWeek_test.pkl')
+        else:
             dateObject = pd.DatetimeIndex(pd.to_datetime(df['orderDate']))
             dayOfTheWeek = {}
             for i in df.index:
@@ -406,32 +500,35 @@ def featureEngineering(df):
                         dayOfTheWeek[currDate] = 1
                     else: # weekdays
                         dayOfTheWeek[currDate] = 0
-        else:
-            dayOfTheWeek = joblib.load('pickleFiles/dayOfTheWeek.pkl')
+            if state == 1:
+                joblib.dump(dayOfTheWeek,'pickleFiles/dayOfTheWeek.pkl')
+            else:
+                joblib.dump(dayOfTheWeek,'pickleFiles/dayOfTheWeek_test.pkl')
         df['isWeekend'] = df['orderDate'].map(dayOfTheWeek)
         return df
-        
-    def multiplePurchase(df):
-        pass
     
-    def paymentType(df):
-        return df
-
+    ## 1. TEST DONT HAVE. USE TRAIN.
+    # 2. Runs fast enough, dont need pickle.
     def highReturnItem(df):
         if not os.path.exists('pickleFiles/returnRates.pkl'):
             articles = df.groupby('articleID')
             returnRates = {}
             for idx,article in articles:
                 returnRates[idx] = sum(article['returnQuantity'])
+                
+            joblib.dump(returnRates,'pickleFiles/returnRates.pkl')
         else:
             returnRates = joblib.load('pickleFiles/returnRates.pkl')
+            
         df['returnRates'] = df['articleID'].map(returnRates)
         mean = df['returnRates'].mean()
-        df.ix[df.returnRates > mean,'returnRates'] = 0
-        df.ix[df.returnRates <= mean,'returnRates'] = 1
+        df.ix[df.returnRates > mean,'returnRates'] = 1
+        df.ix[df.returnRates <= mean,'returnRates'] = 0
+        df['returnRates'].fillna(-99,inplace=True)
         return df
-    
-    def customerLikelyToReturn(df):
+        
+    ## TEST DONT HAVE. USE TRAIN.
+    def customerReturnSpecificItem(df):
         if not os.path.exists('pickleFiles/likelyreturn.pkl'):
             dic = {}
             for i in df.index:
@@ -445,17 +542,8 @@ def featureEngineering(df):
                     else:
                         dic[currCustomer][article] += df['returnQuantity'][i]
         else:
-            dic = joblib.load('likelyreturn.pkl')
-            
+            dic = joblib.load('pickleFiles/likelyreturn.pkl')
         likelyReturn = pd.Series(name= 'likelyReturn', index=df.index)
-        
-        def simulateTestData(col): # replace 2/3 with missing values.
-            import random as rand
-            length = len(col)
-            randomList = rand.sample(range(1,length), int(length*(2/3)))
-            col[randomList] = -99
-            return col
-            
         for i in df.index:
             currItem = df['articleID'][i]
             currCustomer = df['customerID'][i]
@@ -466,15 +554,108 @@ def featureEngineering(df):
                     likelyReturn.set_value(i,0)
             except:
                 likelyReturn.set_value(i,-99)
-        #for training data only. Comment out if not.
-        likelyReturn= simulateTestData(likelyReturn)
         df['customerSpecificReturn'] = likelyReturn
         return df
+        
+    ## TEST DONT HAVE. USE TRAIN   
+    # makes 3 columns, similar function. eg, for size, it finds all the products every customer
+    # has returned, and which one he kept. Then makes a col called likelyReturnSize, where its
+    # 1 if return before, 0 if keep, -99 if the item size he bought is new (unknown)
+    def returnSizePdtgrpColor(train):
+        if not os.path.exists('pickleFiles/likelyreturnSize.pkl'):
+            sizeDic = {}
+            colorDic={}
+            pdtGroup = {}
+            for j in train.index:
+                currCust = train['customerID'][j]
+                if currCust in sizeDic:
+                    continue
+                newdf = train[train['customerID'] == currCust] #find all one shot
+                returnYes = newdf[newdf['returnQuantity'] > 0]
+                returnNo = newdf[newdf['returnQuantity'] == 0]
+                
+                returnedSize = Counter(returnYes['sizeCode']).most_common()
+                returnedColor = Counter(returnYes['colorCode']).most_common()
+                returnedPdtGrp = Counter(returnYes['productGroup']).most_common()
+                keptSize = Counter(returnNo['sizeCode']).most_common()
+                keptColor = Counter(returnNo['colorCode']).most_common()
+                keptPdtGrp = Counter(returnNo['productGroup']).most_common()
+                
+                keepList = [keptSize,keptColor,keptPdtGrp]
+                returnList = [returnedSize,returnedColor,returnedPdtGrp]
+                
+                for i in range(len(keepList)):
+                    keepList[i] = dict((x,y) for x,y in keepList[i])
+                    returnList[i] = dict((x,y) for x,y in returnList[i])
+                    
+                    for key in returnList[i]: #for every key like returnedSize,
+                        if key in keepList[i]: #return - keep. if +ve, means return MORE
+                            result =  returnList[i][key] - keepList[i][key]
+                        else: #if key not in returnList,
+                            result = returnList[i][key]
+                        #At this point, the only remaining items are those only in keepList
+                        if result > 0:
+                            decision = 1 #return
+                        elif result <0:
+                            decision = 0 #keep
+                        else: #if draw
+                            decision = -99
+                            
+                        if i ==0:
+                            sizeDic[currCust] = {key:decision}
+                        elif i==1:
+                            colorDic[currCust] = {key:decision}
+                        else:
+                            pdtGroup[currCust] = {key:decision}
+                            
+                    for key,result in keepList[i].items():
+                        if key not in returnList[i]:
+                            if i ==0:
+                                sizeDic[currCust] = {key:0}
+                            elif i==1:
+                                colorDic[currCust] = {key:0}
+                            else:
+                                pdtGroup[currCust] = {key:0}
+            joblib.dump(sizeDic,'pickleFiles/likelyreturnSize.pkl')
+            joblib.dump(colorDic,'pickleFiles/likelyreturnColor.pkl')
+            joblib.dump(pdtGroup,'pickleFiles/likelyreturnPdtGrp.pkl')
+        else:
+            sizeDic = joblib.load('pickleFiles/likelyreturnSize.pkl')
+            colorDic=joblib.load('pickleFiles/likelyreturnColor.pkl')
+            pdtGroup = joblib.load('pickleFiles/likelyreturnPdtGrp.pkl')
             
+        #find difference between kept and not kept. make final column
+        likelyReturnSize = pd.Series(name= 'likelysize', index=train.index)
+        likelyReturnPdtGrp = pd.Series(name= 'likelypdtgrp', index=train.index)
+        likelyReturnColor = pd.Series(name= 'likelyreturncolor', index=train.index)
+        for i in train.index:
+            currCust = train['customerID'][i]
+            if currCust not in sizeDic:
+                likelyReturnSize.set_value(i,-99)
+                likelyReturnPdtGrp.set_value(i,-99)
+                likelyReturnColor.set_value(i,-99)
+            else:
+                size = train['sizeCode'][i]
+                grp = train['productGroup'][i]
+                color = train['colorCode'][i]
+                if size in sizeDic[currCust]:
+                    likelyReturnSize.set_value(i,sizeDic[currCust][size])
+                else:
+                    likelyReturnSize.set_value(i,-99)
+                if color in colorDic[currCust]:
+                    likelyReturnColor.set_value(i,colorDic[currCust][color])
+                else:
+                    likelyReturnColor.set_value(i,-99)
+                if grp in pdtGroup[currCust]:
+                    likelyReturnPdtGrp.set_value(i,pdtGroup[currCust][grp])
+                else:
+                    likelyReturnPdtGrp.set_value(i,-99)
+        
+        train['likelyReturnSize'] = likelyReturnSize
+        train['likelyReturnPdtGrp'] = likelyReturnPdtGrp
+        train['likelyReturnColor'] = likelyReturnColor
+        return train
             
-    # 3) did they buy more than one item. Yes or no
-    # 4) online or offline payment? 
-    df = customerLikelyToReturn(df)
     df = purchasesAndReturns(df)
     df = userSpending(df) 
     df = priceDiscount(df)
@@ -487,9 +668,29 @@ def featureEngineering(df):
     df = isRepeatCustomer(df) #boolean version
     df = weekendWeekday(df)
     df = highReturnItem(df)
+    df = customerReturnSpecificItem(df)
+    df = returnSizePdtgrpColor(df)
     print('Feature Engineering Done')
     return df
 
+def simulateTest(df):
+     import random as rand
+     length = len(df)
+     #customer specific -> 42% unknown customers
+     randomList = rand.sample(range(1,length), int(length*(0.42))) 
+     df['returnsPerCustomer'][randomList] = -99
+     df['likelyReturnSize'][randomList] = -99
+     df['likelyReturnPdtGrp'][randomList] = -99
+     df['likelyReturnColor'][randomList] = -99
+     #for customerSpecific return --> only 2% bought same products in test
+     randomList = rand.sample(range(1,length), int(length*(0.98))) 
+     df['customerSpecificReturn'][randomList] = -99
+     #item specific: only 72% known items
+     randomList = rand.sample(range(1,length), int(length*(0.28)))
+     df['returnRates'][randomList] = -99
+     return df
+     
+     
 """
 Input:
 1) <PD DF> df: pandas dataframe
@@ -653,7 +854,6 @@ Output:
 1) None. Prints 5 fold cross val score, confusion matrix, and competition metric
 for all classifiers. 
 """
-accuracy=[]
 def accuracyChecker(dataset,target,clfs,cross_val,ensemble,record,predictTest):
     global accuracy
     print('Beginning evaluation of models...')
@@ -702,8 +902,6 @@ def accuracyChecker(dataset,target,clfs,cross_val,ensemble,record,predictTest):
             testAccuracy = classifier.score(testx,testy)
             confMat = metrics.confusion_matrix(testy,pred,labels=[0,1,2,3,4,5])
             error = computeError(pred,testy)
-            if name== 'XGBClassifier':
-                accuracy.append(testAccuracy)
             scaledError = errorScaler(error)
             print('Test data accuracy for '+name+': '+ str(testAccuracy))
             print(confMat)
@@ -798,6 +996,7 @@ def computeError(predicted,target):
 ###################################################
     
 def generatePredictions(clfs,ensemble):
+    # cols needed: orderID,articleID,colorCode,sizeCode,prediction
     pass
     
 def run():
@@ -806,15 +1005,12 @@ def run():
     datasetSize = len(train)
     dataset,target = splitDatasetTarget(train)
     dataset,target = stratifiedSampleGenerator(dataset,target,test_size=0.25)
-    useThiruCol = False #chagne this to use my cols
-    if useThiruCol == True:
-        cols = joblib.load('pickleFiles/thirucols.pkl')
-        dataset = dataset[cols]
     # testFeatureAccuracy(dataset,target)
     #finalCols,keepList,discardList = testFeatureAccuracy2(dataset,target)
     # clfs = [xgBoost(),randomForest(),extraTrees(),kNN(),neuralNetwork()]
-    clfs = [xgBoost(),randomForest(),extraTrees(),kNN()]
+    clfs = [xgBoost(),randomForest(),extraTrees()]
     clfs = accuracyChecker(dataset2,target,clfs,cross_val=False,ensemble = True,record = True,predictTest=False) # Dont use CV, Yes ensemble, Yes Record. 
-
-if __name__ == '__main__':
-	run()
+    
+    #test = loadTestDataFrame()
+#if __name__ == '__main__':
+#	run()

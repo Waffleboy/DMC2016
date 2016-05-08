@@ -605,3 +605,63 @@ Ensemble,"{'p': 2, 'algorithm': 'auto', 'metric_params': None, 'weights': 'unifo
  [    6     6     0     0     0     0]
  [    0     1     0     0     0     0]
  [    0     0     0     0     0     0]]",27871,557416.827294
+XGBClassifier,"{'subsample': 0.9, 'reg_alpha': 0, 'colsample_bytree': 1, 'gamma': 0, 'max_depth': 8, 'min_child_weight': 1, 'base_score': 0.5, 'missing': None, 'nthread': 8, 'n_estimators': 300, 'colsample_bylevel': 1, 'reg_lambda': 1, 'max_delta_step': 0, 'seed': 1, 'silent': 1, 'learning_rate': 0.1, 'scale_pos_weight': 1, 'objective': 'multi:softprob'}",False,91360,0.701335376532,"[[25802 17317    13     1     0     0]
+ [ 9789 38247    24     0     0     0]
+ [   35    95    25     0     0     0]
+ [    2     6     2     0     0     0]
+ [    0     1     0     0     0     0]
+ [    0     0     1     0     0     0]]",27350,136749.40127
+RandomForestClassifier,"{'max_leaf_nodes': None, 'warm_start': False, 'n_jobs': 8, 'max_depth': 8, 'criterion': 'gini', 'min_weight_fraction_leaf': 0.0, 'max_features': 'auto', 'n_estimators': 300, 'class_weight': {0: 2, 1: 1}, 'verbose': 0, 'random_state': 1, 'oob_score': False, 'bootstrap': True, 'min_samples_leaf': 1, 'min_samples_split': 2}",False,91360,0.560245183888,"[[39937  3196     0     0     0     0]
+ [36813 11247     0     0     0     0]
+ [  113    42     0     0     0     0]
+ [    9     1     0     0     0     0]
+ [    1     0     0     0     0     0]
+ [    1     0     0     0     0     0]]",40315,201574.117447
+ExtraTreesClassifier,"{'max_leaf_nodes': None, 'warm_start': False, 'n_jobs': 8, 'max_depth': 8, 'criterion': 'gini', 'min_weight_fraction_leaf': 0.0, 'max_features': 'auto', 'n_estimators': 300, 'class_weight': {0: 1, 1: 2}, 'verbose': 0, 'random_state': 1, 'oob_score': False, 'bootstrap': False, 'min_samples_leaf': 1, 'min_samples_split': 2}",False,91360,0.544001751313,"[[ 2044 41089     0     0     0     0]
+ [  404 47656     0     0     0     0]
+ [    8   147     0     0     0     0]
+ [    1     9     0     0     0     0]
+ [    0     1     0     0     0     0]
+ [    0     1     0     0     0     0]]",41684,208419.087478
+KNeighborsClassifier,"{'metric': 'minkowski', 'weights': 'uniform', 'leaf_size': 30, 'algorithm': 'auto', 'p': 2, 'n_neighbors': 1, 'metric_params': None, 'n_jobs': 8}",False,91360,0.539382661996,"[[22044 21032    53     4     0     0]
+ [20762 27231    67     0     0     0]
+ [   67    84     3     0     0     1]
+ [    3     7     0     0     0     0]
+ [    1     0     0     0     0     0]
+ [    0     1     0     0     0     0]]",42231,211154.075504
+Ensemble,"{'metric': 'minkowski', 'weights': 'uniform', 'leaf_size': 30, 'algorithm': 'auto', 'p': 2, 'n_neighbors': 1, 'metric_params': None, 'n_jobs': 8}",True,91360,0.70111,"[[25725 17407     1     0     0     0]
+ [ 9733 38323     4     0     0     0]
+ [   35   115     5     0     0     0]
+ [    2     8     0     0     0     0]
+ [    0     1     0     0     0     0]
+ [    0     1     0     0     0     0]]",27360,136799.401051
+XGBClassifier,"{'subsample': 0.9, 'reg_alpha': 0, 'colsample_bytree': 1, 'gamma': 0, 'max_depth': 8, 'min_child_weight': 1, 'base_score': 0.5, 'missing': None, 'nthread': 8, 'n_estimators': 300, 'colsample_bylevel': 1, 'reg_lambda': 1, 'max_delta_step': 0, 'seed': 1, 'silent': 1, 'learning_rate': 0.1, 'scale_pos_weight': 1, 'objective': 'multi:softprob'}",False,91360,0.861460157618,"[[34545  8551     6     1     0     0]
+ [ 3946 44136    36     0     0     0]
+ [   10   101    22     0     0     0]
+ [    1     4     0     0     0     0]
+ [    0     0     0     0     0     0]
+ [    0     0     0     1     0     0]]",12682,63409.722373
+RandomForestClassifier,"{'max_leaf_nodes': None, 'warm_start': False, 'n_jobs': 8, 'max_depth': 8, 'criterion': 'gini', 'min_weight_fraction_leaf': 0.0, 'max_features': 'auto', 'n_estimators': 300, 'class_weight': {0: 2, 1: 1}, 'verbose': 0, 'random_state': 1, 'oob_score': False, 'bootstrap': True, 'min_samples_leaf': 1, 'min_samples_split': 2}",False,91360,0.772449649737,"[[39973  3130     0     0     0     0]
+ [17520 30598     0     0     0     0]
+ [   48    85     0     0     0     0]
+ [    1     4     0     0     0     0]
+ [    0     0     0     0     0     0]
+ [    1     0     0     0     0     0]]",20847,104234.54363
+ExtraTreesClassifier,"{'max_leaf_nodes': None, 'warm_start': False, 'n_jobs': 8, 'max_depth': 8, 'criterion': 'gini', 'min_weight_fraction_leaf': 0.0, 'max_features': 'auto', 'n_estimators': 300, 'class_weight': {0: 1, 1: 2}, 'verbose': 0, 'random_state': 1, 'oob_score': False, 'bootstrap': False, 'min_samples_leaf': 1, 'min_samples_split': 2}",False,91360,0.788999562172,"[[24742 18361     0     0     0     0]
+ [  777 47341     0     0     0     0]
+ [    1   132     0     0     0     0]
+ [    0     5     0     0     0     0]
+ [    0     0     0     0     0     0]
+ [    0     1     0     0     0     0]]",19286,96429.5778021
+KNeighborsClassifier,"{'metric': 'minkowski', 'weights': 'uniform', 'leaf_size': 30, 'algorithm': 'auto', 'p': 2, 'n_neighbors': 1, 'metric_params': None, 'n_jobs': 8}",False,91360,0.545534150613,"[[22026 21002    72     3     0     0]
+ [20233 27811    69     5     0     0]
+ [   49    81     3     0     0     0]
+ [    3     2     0     0     0     0]
+ [    0     0     0     0     0     0]
+ [    0     0     1     0     0     0]]",41662,208309.08796
+Ensemble,"{'metric': 'minkowski', 'weights': 'uniform', 'leaf_size': 30, 'algorithm': 'auto', 'p': 2, 'n_neighbors': 1, 'metric_params': None, 'n_jobs': 8}",True,91360,0.86161,"[[34547  8556     0     0     0     0]
+ [ 3948 44170     0     0     0     0]
+ [   11   122     0     0     0     0]
+ [    1     4     0     0     0     0]
+ [    0     0     0     0     0     0]
+ [    1     0     0     0     0     0]]",12664,63319.7227671
