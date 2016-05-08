@@ -77,7 +77,7 @@ def preprocess(df,impute,engineerFeatures,state):
         if impute == False:
             df['productGroup'].fillna(-99,inplace=True)
             df['rrp'].fillna(-99,inplace=True)
-            df['voucherID'].fillna(-99,inplace=True)
+            df['voucherID'].fillna('MISSING',inplace=True)
             return df
         else:
             try:
@@ -136,7 +136,6 @@ def preprocess(df,impute,engineerFeatures,state):
     df = fixSizeCode(df)
     print('Changing orderDate to months..')
     df=orderDateToMonths(df)
-    df.reset_index(inplace=True,drop=True)
     if engineerFeatures:
         print('Running feature engineering..')
         df = featureEngineering(df,state)
@@ -167,7 +166,8 @@ def featureEngineering(df,state):
         priceDiscount = df['voucherAmount'].divide(df['price'],fill_value=0.0)
         priceDiscount[np.isinf(priceDiscount)] = 0.0
         df['priceDiscount'] = priceDiscount
-        return df.dropna() #fix missing values. Else first run cannot run
+        df['priceDiscount'].fillna(0,inplace=True)
+        return df
 
     """
     Creates new column to indicate if a color is popular or not.
@@ -297,7 +297,7 @@ def featureEngineering(df,state):
             allSize = {}
             for i in df.index: #find all sizes purchased by customers
                 currCust = df['customerID'][i]
-                if currCust not in size:
+                if currCust not in allSize:
                     allSize[currCust] = [df['sizeCode'][i]]
                 else:
                     allSize[currCust].append(df['sizeCode'][i])
@@ -311,7 +311,8 @@ def featureEngineering(df,state):
                 joblib.dump(modeSize,'pickleFiles/modeSizesBought.pkl')
             else:
                 joblib.dump(modeSize,'pickleFiles/modeSizesBought_test.pkl')
-                
+            modeSizeData = modeSize
+            
         mostFrequentSize = pd.Series(name= 'mostFrequentSize', index=df.index)
         for i in df.index:
             customer = df['customerID'][i]
@@ -1010,8 +1011,8 @@ def run():
     #finalCols,keepList,discardList = testFeatureAccuracy2(dataset,target)
     # clfs = [xgBoost(),randomForest(),extraTrees(),kNN(),neuralNetwork()]
     clfs = [xgBoost(),randomForest(),extraTrees()]
-    clfs = accuracyChecker(dataset2,target,clfs,cross_val=False,ensemble = True,record = True,predictTest=False) # Dont use CV, Yes ensemble, Yes Record. 
+    clfs = accuracyChecker(dataset,target,clfs,cross_val=False,ensemble = True,record = True,predictTest=False) # Dont use CV, Yes ensemble, Yes Record. 
     
-    #test = loadTestDataFrame()
-if __name__ == '__main__':
-	run()
+    test = loadTestDataFrame()
+#if __name__ == '__main__':
+#	run()
