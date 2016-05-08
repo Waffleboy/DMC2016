@@ -252,7 +252,7 @@ def featureEngineering(df,state):
         if state == True and os.path.exists('pickleFiles/returnsPerCustomer.pkl'):
             data  = joblib.load('pickleFiles/returnsPerCustomer.pkl')
             data2 = joblib.load('pickleFiles/totalPurchasesPerCustomer.pkl')
-        elif state == False and os.path.exists('pickleFiles/totalPurchasesPerCustomer.pkl'):
+        elif state == False and os.path.exists('pickleFiles/totalPurchasesPerCustomer_test.pkl'):
             data  = joblib.load('pickleFiles/returnsPerCustomer.pkl') #TRAIN DATA
             data2 = joblib.load('pickleFiles/totalPurchasesPerCustomer_test.pkl')
         else: #make new purchases and returnsdata. returns data cannot do with test data.
@@ -274,6 +274,7 @@ def featureEngineering(df,state):
                 joblib.dump(data2,'pickleFiles/totalPurchasesPerCustomer.pkl')
             else:
                 joblib.dump(data2,'pickleFiles/totalPurchasesPerCustomer_test.pkl')
+            data = joblib.load('pickleFiles/returnsPerCustomer.pkl')
     
         numMonths = len(df['orderDate'].unique()) #find num months in dataset
         df['returnsPerCustomer'] = df['customerID'].map(data)
