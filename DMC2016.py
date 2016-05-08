@@ -258,7 +258,7 @@ def featureEngineering(df,state):
         else: #make new purchases and returnsdata. returns data cannot do with test data.
             if state == False and not os.path.exists('pickleFiles/returnsPerCustomer.pkl'):
                 raise Exception('Error with purchasesAndReturns. Cannot make returnsPerCustomer with test data or state set to False')
-            elif state == True and not os.path.exists('pickleFiles/returnsPerCustomer.pkl'):
+            elif state == False and os.path.exists('pickleFiles/returnsPerCustomer.pkl'):
                 data = {}
                 for i in df.index:
                     cust = df['customerID'][i]
@@ -1013,5 +1013,5 @@ def run():
     clfs = accuracyChecker(dataset2,target,clfs,cross_val=False,ensemble = True,record = True,predictTest=False) # Dont use CV, Yes ensemble, Yes Record. 
     
     #test = loadTestDataFrame()
-#if __name__ == '__main__':
-#	run()
+if __name__ == '__main__':
+	run()
