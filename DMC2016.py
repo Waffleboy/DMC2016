@@ -1013,6 +1013,6 @@ def run():
     clfs = [xgBoost(),randomForest(),extraTrees()]
     clfs = accuracyChecker(dataset,target,clfs,cross_val=False,ensemble = True,record = True,predictTest=False) # Dont use CV, Yes ensemble, Yes Record. 
     
-    test = loadTestDataFrame()
-#if __name__ == '__main__':
-#	run()
+    #test = loadTestDataFrame()
+if __name__ == '__main__':
+	run()
