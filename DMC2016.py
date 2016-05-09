@@ -207,7 +207,7 @@ def featureEngineering(df,state):
     def userSpending(df):
         nonlocal state
         print('Making: userSpending')
-        if state == True and os.path.exists('pickleFiles/totalSpent.pkl'):
+        if state == True and os.path.exists('pickleFiles/totalSpent.pkl') and os.path.exists('pickleFiles/averageSpent.pkl') and os.path.exists('pickleFiles/count.pkl'):
             totalSpent = joblib.load('pickleFiles/totalSpent.pkl')
             count = joblib.load('pickleFiles/count.pkl')
             averageSpent = joblib.load('pickleFiles/averageSpent.pkl')
@@ -226,6 +226,9 @@ def featureEngineering(df,state):
                 else:
                     totalSpent[userId] += price
                     count[userId] += 1
+            for i in totalSpent: #slow. theres a better way to do this right
+                averageSpent[i] = totalSpent[i] / count[i]
+            
             if state == True:
                 joblib.dump(totalSpent,'pickleFiles/totalSpent.pkl')
                 joblib.dump(count,'pickleFiles/count.pkl')
@@ -233,13 +236,11 @@ def featureEngineering(df,state):
             else:
                 joblib.dump(totalSpent,'pickleFiles/totalSpent_test.pkl')
                 joblib.dump(count,'pickleFiles/count_test.pkl')
-                joblib.dump(averageSpent,'pickleFiles/averageSpent_test.pkl')
-        for i in totalSpent:
-            averageSpent[i] = totalSpent[i] / count[i]
+                joblib.dump(averageSpent,'pickleFiles/averageSpent_test.pkl')        
+            
         df['totalSpent'] = df['customerID'].map(totalSpent)
         df['averageSpent'] = df['customerID'].map(averageSpent)
         df['yearlyExpense'] = df['averageSpent'] / df['totalSpent']
-        df.drop('totalSpent',axis=1,inplace=True)
         return df
     
     # 2 in 1 function to speed up as same loop.
@@ -249,9 +250,11 @@ def featureEngineering(df,state):
     # 3) create purchaseFrequency column
     def purchasesAndReturns(df): 
         print('Making: returnsPerCustomer_totalPurchases')
+        #if train and both pickle exist, load.
         if state == True and os.path.exists('pickleFiles/returnsPerCustomer.pkl'):
             data  = joblib.load('pickleFiles/returnsPerCustomer.pkl')
             data2 = joblib.load('pickleFiles/totalPurchasesPerCustomer.pkl')
+        #if test and both pickle exist, load.
         elif state == False and os.path.exists('pickleFiles/totalPurchasesPerCustomer_test.pkl'):
             data  = joblib.load('pickleFiles/returnsPerCustomer.pkl') #TRAIN DATA
             data2 = joblib.load('pickleFiles/totalPurchasesPerCustomer_test.pkl')
@@ -259,27 +262,40 @@ def featureEngineering(df,state):
             if state == False and not os.path.exists('pickleFiles/returnsPerCustomer.pkl'):
                 raise Exception('Error with purchasesAndReturns. Cannot make returnsPerCustomer with test data or state set to False')
             elif state == False and os.path.exists('pickleFiles/returnsPerCustomer.pkl'):
+                #if test and returns per customer exists.
+                data = joblib.load('pickleFiles/returnsPerCustomer.pkl')
+                # if train and both pickle dont exist - make it.
+            elif state == True and not os.path.exists('pickleFiles/returnsPerCustomer.pkl'):
                 data = {}
                 for i in df.index:
                     cust = df['customerID'][i]
-                    newdf = df[df['customerID'] == cust]
-                    data[cust] = sum(newdf['returnQuantity'])
-                joblib.dump(data,'pickleFiles/returnsPerCustomer.pkl')
+                    returns = df['returnQuantity'][i]
+                    if cust not in data:
+                        data[cust] = returns
+                    else:
+                        data[cust] += returns
+                joblib.dump(data,'returnsPerCustomer.pkl')
             data2 = {}
             for i in df.index:
                 cust = df['customerID'][i]
-                newdf = df[df['customerID'] == cust]
-                data2[cust] = sum(newdf['quantity'])
+                quantity = df['quantity'][i]
+                if cust not in data2:
+                    data2[cust] = quantity
+                else:
+                    data2[cust] += quantity
             if state == 1:
                 joblib.dump(data2,'pickleFiles/totalPurchasesPerCustomer.pkl')
             else:
                 joblib.dump(data2,'pickleFiles/totalPurchasesPerCustomer_test.pkl')
-            data = joblib.load('pickleFiles/returnsPerCustomer.pkl')
     
         numMonths = len(df['orderDate'].unique()) #find num months in dataset
         df['returnsPerCustomer'] = df['customerID'].map(data)
         df['totalPurchases'] = df['customerID'].map(data2) #decreases accuracy
         df['purchaseFrequency'] = df['totalPurchases'] / numMonths  #decreases accuracy
+        
+        df['returnsPerCustomer'].fillna(-99,inplace=True)
+        df['totalPurchases'].fillna(-99,inplace=True)
+        df['purchaseFrequency'].fillna(-99,inplace=True)
         return df
     
     #Creates 2 columns
@@ -436,10 +452,10 @@ def featureEngineering(df,state):
     def varianceInProductGroups(df):
         nonlocal state
         print("Making: varianceInProductGroups")
-        if state == 1 and os.path.exists('pickleFiles/colorStd.pkl'):
+        if state == 1 and os.path.exists('pickleFiles/colorStd.pkl') and os.path.exists('pickleFiles/sizeStd.pkl'):
             sizeStd = joblib.load('pickleFiles/sizeStd.pkl')
             colorStd = joblib.load('pickleFiles/colorStd.pkl')
-        elif state == 0 and os.path.exists('pickleFiles/colorStd_test.pkl'):
+        elif state == 0 and os.path.exists('pickleFiles/colorStd_test.pkl') and os.path.exists('pickleFiles/sizeStd_test.pkl'):
             sizeStd = joblib.load('pickleFiles/sizeStd_test.pkl')
             colorStd = joblib.load('pickleFiles/colorStd_test.pkl')
         else:
