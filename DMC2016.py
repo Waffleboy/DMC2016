@@ -836,7 +836,7 @@ def testFeatureAccuracy2(dataset,target):
     #find base score
     print('Finding base Score')
     trainx,testx,trainy,testy = train_test_split(dataset,target,test_size=0.2)
-    classifier.fit(trainx[originalCols],trainy, early_stopping_rounds=25, eval_metric="merror", eval_set=[(testx, testy)])
+    classifier.fit(trainx[originalCols],trainy, early_stopping_rounds=25, eval_metric="merror", eval_set=[(testx[originalCols], testy)])
     accuracy = classifier.score(testx[originalCols],testy)
     #loop through new features, add one by one. if improve, keep. else discard
     for i in range(numNewFeatures):
@@ -1025,7 +1025,11 @@ def run():
     dataset,target = splitDatasetTarget(train)
     dataset,target = stratifiedSampleGenerator(dataset,target,test_size=0.25)
     # testFeatureAccuracy(dataset,target)
-    finalCols,keepList,discardList = testFeatureAccuracy2(dataset,target)
+    # finalCols,keepList,discardList = testFeatureAccuracy2(dataset,target)
+    # finalCols = joblib.load('colstokeep.pkl')
+    # finalCols.extend(['likelyReturnSize','likelyReturnColor','likelyReturnPdtGrp'])
+    for i in dataset.columns:
+        dataset[i].fillna(-99,inplace=True)
     # clfs = [xgBoost(),randomForest(),extraTrees(),kNN(),neuralNetwork()]
     clfs = [xgBoost(),randomForest(),extraTrees()]
     clfs = accuracyChecker(dataset,target,clfs,cross_val=False,ensemble = True,record = True,predictTest=False) # Dont use CV, Yes ensemble, Yes Record. 
