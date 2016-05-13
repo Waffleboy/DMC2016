@@ -1,0 +1,2 @@
+Params,Accuracy,Tuning
+"{'base_score': 0.5, 'colsample_bytree': 1, 'reg_lambda': 1, 'subsample': 0.9, 'n_estimators': 300, 'missing': None, 'learning_rate': 0.1, 'max_depth': 9, 'reg_alpha': 0, 'scale_pos_weight': 1, 'nthread': 8, 'max_delta_step': 0, 'colsample_bylevel': 1, 'gamma': 0, 'silent': 1, 'seed': 1, 'objective': 'multi:softprob', 'min_child_weight': 1}",0.71085249314,Max depth

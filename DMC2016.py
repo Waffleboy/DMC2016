@@ -51,7 +51,7 @@ def loadTestDataFrame():
             df = pd.read_csv('/home/andre/workshop/dmc2016/andrefiles/orders_class.csv',sep=';')
         df = preprocess(df,impute=False,engineerFeatures=check,state=False) #False = dont use imputation.
     return df
-    
+
 ###################################################
 #              Preprocessing Methods              #
 ###################################################
@@ -91,22 +91,22 @@ def preprocess(df,impute,engineerFeatures,state):
             except:
                 print('Error with Imputation')
             return df
-        
-    #deal with sizeCode being a bitch and 
-    # having S,M,L,I,A, and values also. 
+
+    #deal with sizeCode being a bitch and
+    # having S,M,L,I,A, and values also.
     # Ideally, impute the S,M,L to numeric, but whats I,A??
     def fixSizeCode(df):
         #TEMPORARY, CONVERT TO NUMERIC. Find better way!
-        df = df.replace(['XS'],200)  
-        df = df.replace(['S'],210)  
-        df = df.replace(['M'],220)  
-        df = df.replace(['L'],230)  
-        df = df.replace(['XL'],240)  
-        df = df.replace(['I'],250) 
-        df = df.replace(['A'],260)  
+        df = df.replace(['XS'],200)
+        df = df.replace(['S'],210)
+        df = df.replace(['M'],220)
+        df = df.replace(['L'],230)
+        df = df.replace(['XL'],240)
+        df = df.replace(['I'],250)
+        df = df.replace(['A'],260)
         df.sizeCode = df.sizeCode.astype(np.int64)
         return df
-        
+
     """
     Convert orderDate to months (12/1/2016 --> 1)
     """
@@ -115,7 +115,7 @@ def preprocess(df,impute,engineerFeatures,state):
         return df
     """
     one shot find all categorical columns and encode them. Cause its awesome like that.
-    """    
+    """
     def oneHotEncode(df):
         #maybe can drop voucherID, articleID and stuff.
      #  columnsToEncode=['paymentMethod','customerID','articleID','voucherID']
@@ -127,7 +127,7 @@ def preprocess(df,impute,engineerFeatures,state):
             except:
                 print('Error encoding '+feature)
         return df
-    
+
     print('Dropping redundant columns..')
     df = dropRedundantColumns(df)
     print('Dropping missing values: impute = '+str(impute))
@@ -152,7 +152,7 @@ def preprocess(df,impute,engineerFeatures,state):
     else:
         df.to_csv('preprocessed_test.csv',index=False)
     return df
-    
+
 ###################################################
 #           Feature Engineering Methods           #
 ###################################################
@@ -228,7 +228,7 @@ def featureEngineering(df,state):
                     count[userId] += 1
             for i in totalSpent: #slow. theres a better way to do this right
                 averageSpent[i] = totalSpent[i] / count[i]
-            
+
             if state == True:
                 joblib.dump(totalSpent,'pickleFiles/totalSpent.pkl')
                 joblib.dump(count,'pickleFiles/count.pkl')
@@ -236,19 +236,19 @@ def featureEngineering(df,state):
             else:
                 joblib.dump(totalSpent,'pickleFiles/totalSpent_test.pkl')
                 joblib.dump(count,'pickleFiles/count_test.pkl')
-                joblib.dump(averageSpent,'pickleFiles/averageSpent_test.pkl')        
-            
+                joblib.dump(averageSpent,'pickleFiles/averageSpent_test.pkl')
+
         df['totalSpent'] = df['customerID'].map(totalSpent)
         df['averageSpent'] = df['customerID'].map(averageSpent)
         df['yearlyExpense'] = df['averageSpent'] / df['totalSpent']
         return df
-    
+
     # 2 in 1 function to speed up as same loop.
     # 1) Create returnsPerCustomer column, find the total amount of returns per unique
     # customer.
     # 2) create totalPurchases column
     # 3) create purchaseFrequency column
-    def purchasesAndReturns(df): 
+    def purchasesAndReturns(df):
         print('Making: returnsPerCustomer_totalPurchases')
         #if train and both pickle exist, load.
         if state == True and os.path.exists('pickleFiles/returnsPerCustomer.pkl'):
@@ -287,17 +287,17 @@ def featureEngineering(df,state):
                 joblib.dump(data2,'pickleFiles/totalPurchasesPerCustomer.pkl')
             else:
                 joblib.dump(data2,'pickleFiles/totalPurchasesPerCustomer_test.pkl')
-    
+
         numMonths = len(df['orderDate'].unique()) #find num months in dataset
         df['returnsPerCustomer'] = df['customerID'].map(data)
         df['totalPurchases'] = df['customerID'].map(data2) #decreases accuracy
         df['purchaseFrequency'] = df['totalPurchases'] / numMonths  #decreases accuracy
-        
+
         df['returnsPerCustomer'].fillna(-99,inplace=True)
         df['totalPurchases'].fillna(-99,inplace=True)
         df['purchaseFrequency'].fillna(-99,inplace=True)
         return df
-    
+
     #Creates 2 columns
     # 1) modeSize: most frequent size bought by customer
     # 2) differenceModeSize: difference between modeSize and specific item bought
@@ -322,13 +322,13 @@ def featureEngineering(df,state):
                 if customer not in modeSize:
                     mode = Counter(allSize[customer]).most_common(1)[0][0]
                     modeSize[customer] = mode
-        
+
             if state == 1:
                 joblib.dump(modeSize,'pickleFiles/modeSizesBought.pkl')
             else:
                 joblib.dump(modeSize,'pickleFiles/modeSizesBought_test.pkl')
             modeSizeData = modeSize
-            
+
         mostFrequentSize = pd.Series(name= 'mostFrequentSize', index=df.index)
         for i in df.index:
             customer = df['customerID'][i]
@@ -336,7 +336,7 @@ def featureEngineering(df,state):
         df['modeSize'] = mostFrequentSize
         df['differenceModeSize'] = abs(mostFrequentSize - df['sizeCode'])
         return df
-    
+
     #Creates 2 columns
     # 1) averageColor: the average colorCode that each customer buys
     # 2) differenceAvgColor: the difference between the specific item bought and averageColor
@@ -436,7 +436,7 @@ def featureEngineering(df,state):
                 joblib.dump(voucherDic,'pickleFiles/voucherToArticle.pkl')
             else:
                 joblib.dump(voucherDic,'pickleFiles/voucherToArticle_test.pkl')
-                
+
         articleSet = set(voucherDic.values())
         cheapArticle = pd.Series(name='cheapArticle',index=df.index)
         for i in df.index:
@@ -524,7 +524,7 @@ def featureEngineering(df,state):
                 joblib.dump(dayOfTheWeek,'pickleFiles/dayOfTheWeek_test.pkl')
         df['isWeekend'] = df['orderDate'].map(dayOfTheWeek)
         return df
-    
+
     ## 1. TEST DONT HAVE. USE TRAIN.
     # 2. Runs fast enough, dont need pickle.
     def highReturnItem(df):
@@ -533,18 +533,18 @@ def featureEngineering(df,state):
             returnRates = {}
             for idx,article in articles:
                 returnRates[idx] = sum(article['returnQuantity'])
-                
+
             joblib.dump(returnRates,'pickleFiles/returnRates.pkl')
         else:
             returnRates = joblib.load('pickleFiles/returnRates.pkl')
-            
+
         df['returnRates'] = df['articleID'].map(returnRates)
         mean = df['returnRates'].mean()
         df.ix[df.returnRates > mean,'returnRates'] = 1
         df.ix[df.returnRates <= mean,'returnRates'] = 0
         df['returnRates'].fillna(-99,inplace=True)
         return df
-        
+
     ## TEST DONT HAVE. USE TRAIN.
     def customerReturnSpecificItem(df):
         if not os.path.exists('pickleFiles/likelyreturn.pkl'):
@@ -574,8 +574,8 @@ def featureEngineering(df,state):
                 likelyReturn.set_value(i,-99)
         df['customerSpecificReturn'] = likelyReturn
         return df
-        
-    ## TEST DONT HAVE. USE TRAIN   
+
+    ## TEST DONT HAVE. USE TRAIN
     # makes 3 columns, similar function. eg, for size, it finds all the products every customer
     # has returned, and which one he kept. Then makes a col called likelyReturnSize, where its
     # 1 if return before, 0 if keep, -99 if the item size he bought is new (unknown)
@@ -591,21 +591,21 @@ def featureEngineering(df,state):
                 newdf = train[train['customerID'] == currCust] #find all one shot
                 returnYes = newdf[newdf['returnQuantity'] > 0]
                 returnNo = newdf[newdf['returnQuantity'] == 0]
-                
+
                 returnedSize = Counter(returnYes['sizeCode']).most_common()
                 returnedColor = Counter(returnYes['colorCode']).most_common()
                 returnedPdtGrp = Counter(returnYes['productGroup']).most_common()
                 keptSize = Counter(returnNo['sizeCode']).most_common()
                 keptColor = Counter(returnNo['colorCode']).most_common()
                 keptPdtGrp = Counter(returnNo['productGroup']).most_common()
-                
+
                 keepList = [keptSize,keptColor,keptPdtGrp]
                 returnList = [returnedSize,returnedColor,returnedPdtGrp]
-                
+
                 for i in range(len(keepList)):
                     keepList[i] = dict((x,y) for x,y in keepList[i])
                     returnList[i] = dict((x,y) for x,y in returnList[i])
-                    
+
                     for key in returnList[i]: #for every key like returnedSize,
                         if key in keepList[i]: #return - keep. if +ve, means return MORE
                             result =  returnList[i][key] - keepList[i][key]
@@ -618,14 +618,14 @@ def featureEngineering(df,state):
                             decision = 0 #keep
                         else: #if draw
                             decision = -99
-                            
+
                         if i ==0:
                             sizeDic[currCust] = {key:decision}
                         elif i==1:
                             colorDic[currCust] = {key:decision}
                         else:
                             pdtGroup[currCust] = {key:decision}
-                            
+
                     for key,result in keepList[i].items():
                         if key not in returnList[i]:
                             if i ==0:
@@ -641,7 +641,7 @@ def featureEngineering(df,state):
             sizeDic = joblib.load('pickleFiles/likelyreturnSize.pkl')
             colorDic=joblib.load('pickleFiles/likelyreturnColor.pkl')
             pdtGroup = joblib.load('pickleFiles/likelyreturnPdtGrp.pkl')
-            
+
         #find difference between kept and not kept. make final column
         likelyReturnSize = pd.Series(name= 'likelysize', index=train.index)
         likelyReturnPdtGrp = pd.Series(name= 'likelypdtgrp', index=train.index)
@@ -668,14 +668,14 @@ def featureEngineering(df,state):
                     likelyReturnPdtGrp.set_value(i,pdtGroup[currCust][grp])
                 else:
                     likelyReturnPdtGrp.set_value(i,-99)
-        
+
         train['likelyReturnSize'] = likelyReturnSize
         train['likelyReturnPdtGrp'] = likelyReturnPdtGrp
         train['likelyReturnColor'] = likelyReturnColor
         return train
-            
+
     df = purchasesAndReturns(df)
-    df = userSpending(df) 
+    df = userSpending(df)
     df = priceDiscount(df)
     df = colorPopularity(df)
     df = modeSize(df) #ONLY modeSize. Excluded diffModeSize, diffAvgSize, avgSize
@@ -695,20 +695,20 @@ def simulateTest(df):
      import random as rand
      length = len(df)
      #customer specific -> 42% unknown customers
-     randomList = rand.sample(range(1,length), int(length*(0.42))) 
+     randomList = rand.sample(range(1,length), int(length*(0.42)))
      df['returnsPerCustomer'][randomList] = -99
      df['likelyReturnSize'][randomList] = -99
      df['likelyReturnPdtGrp'][randomList] = -99
      df['likelyReturnColor'][randomList] = -99
      #for customerSpecific return --> only 2% bought same products in test
-     randomList = rand.sample(range(1,length), int(length*(0.98))) 
+     randomList = rand.sample(range(1,length), int(length*(0.98)))
      df['customerSpecificReturn'][randomList] = -99
      #item specific: only 72% known items
      randomList = rand.sample(range(1,length), int(length*(0.28)))
      df['returnRates'][randomList] = -99
      return df
-     
-     
+
+
 """
 Input:
 1) <PD DF> df: pandas dataframe
@@ -729,7 +729,7 @@ def splitDatasetTarget(df):
 Input:
  1)<PD DF> dataset: input features
  2)<PD DF> target:  labels
- 
+
 Output:
 
 1) <PD DF> Stratified sample of dataset
@@ -749,7 +749,7 @@ def xgBoost():
     clf = xgb.XGBClassifier(max_depth = 8,n_estimators=300,nthread=8,seed=1,silent=1,
                             objective= 'multi:softmax',learning_rate=0.1,subsample=0.9)
     return clf
-    
+
 def randomForest():
     clf = RandomForestClassifier(max_depth=8, n_estimators=300,n_jobs=8,random_state=1,
                                  class_weight={0:2,1:1})
@@ -759,32 +759,32 @@ def extraTrees():
     clf = ExtraTreesClassifier(max_depth=8, n_estimators=300,n_jobs=8,random_state=1,
                                class_weight = {0:1,1:2})
     return clf
-    
+
 def kNN():
     clf = KNeighborsClassifier(n_neighbors=1,n_jobs=8)
     return clf
-    
+
 def neuralNetwork():
     clf = MLPClassifier(activation='relu',hidden_layer_sizes = (500,300,6),max_iter=500,
                         random_state=1,early_stopping=True)
     return clf
-    
+
 ###################################################
 #              Optimize Models                    #
 ###################################################
- 
+
 """
 Input: params of form {'parameter':[<range>]}
 eg.
 
 {'max_depth':[5,6,7,8], 'subsample':[0.5,0.6]}
-"""  
+"""
 def optimizeClassifier(dataset,target,clf,params):
-    gsearch = GridSearchCV(estimator = clf, param_grid = params, 
+    gsearch = GridSearchCV(estimator = clf, param_grid = params,
                            scoring='f1_macro',n_jobs=8,iid=True, cv=5) #write own scorer?
     gsearch.fit(dataset,target)
     print(gsearch.grid_scores_, gsearch.best_params_, gsearch.best_score_)
-    
+
 ###################################################
 #                 Testing Models                  #
 ###################################################
@@ -797,21 +797,21 @@ def getNameFromModel(clf):
 #Iterates through dataset, drops a column and fits classifier to find change in accuracy
 def testFeatureAccuracy(dataset,target):
     lst=[['Without Feature','Total Accuracy','Net Change']]
-    
+
     #find base accuracy first
     trainx,testx,trainy,testy = train_test_split(dataset,target,test_size=0.2)
     classifier = xgBoost()
-    classifier.fit(trainx,trainy, early_stopping_rounds=25, 
+    classifier.fit(trainx,trainy, early_stopping_rounds=25,
                        eval_metric="merror", eval_set=[(testx, testy)])
     score = classifier.score(testx,testy)
     lst.append(['Baseline',score,'-'])
     initialAccuracy = score
     #for every column in columnsToTest, drop that column then fit
     columnsToTest = ['popularColorByArticle','popularSizeByArticle','cheapArticle','sizeStd','colorStd'] #fill in with column names
-    for col in columnsToTest: 
+    for col in columnsToTest:
         trainx2 = trainx.drop(col,axis=1)
         testx2 = testx.drop(col,axis=1)
-        classifier.fit(trainx2,trainy, early_stopping_rounds=25, 
+        classifier.fit(trainx2,trainy, early_stopping_rounds=25,
                        eval_metric="merror", eval_set=[(testx2, testy)])
         score = classifier.score(testx2,testy)
         lst.append([col,score,round(initialAccuracy-score,3)]) #attach score
@@ -829,7 +829,7 @@ def testFeatureAccuracy2(dataset,target):
     newFeatures = set(list(dataset.columns))
     newFeatures = list(newFeatures.difference(originalCols))
     accuracy = None
-    numNewFeatures = len(newFeatures) #find num new features 
+    numNewFeatures = len(newFeatures) #find num new features
     classifier = xgBoost()
     keep = []
     discard = []
@@ -842,9 +842,9 @@ def testFeatureAccuracy2(dataset,target):
     for i in range(numNewFeatures):
         print('Doing feature '+str(i) +' out of total '+str(numNewFeatures))
         originalCols.append(newFeatures[i])
-        classifier.fit(trainx[originalCols],trainy, early_stopping_rounds=25, 
+        classifier.fit(trainx[originalCols],trainy, early_stopping_rounds=25,
                        eval_metric="merror", eval_set=[(testx[originalCols], testy)])
-                       
+
         score = classifier.score(testx[originalCols],testy)
         if accuracy < score: #if improve accuracy
             accuracy = score
@@ -853,11 +853,11 @@ def testFeatureAccuracy2(dataset,target):
             originalCols.remove(newFeatures[i])
             discard.append(newFeatures[i])
     print('Final accuracy is '+str(accuracy))
-    ##In case 
+    ##In case
     joblib.dump(originalCols,'colstokeep.pkl')
     return originalCols,keep,discard
-    
-        
+
+
 """
 Input:
 1) <pd df> dataset: Pandas dataframe of features
@@ -871,23 +871,23 @@ Input:
 
 Output:
 1) None. Prints 5 fold cross val score, confusion matrix, and competition metric
-for all classifiers. 
+for all classifiers.
 """
 def accuracyChecker(dataset,target,clfs,cross_val,ensemble,record,predictTest):
     global accuracy
     print('Beginning evaluation of models...')
     #if one classifier, make it into lst so not to break function
     if type(clfs) != list:
-        clfs = [clfs] 
+        clfs = [clfs]
     #if not cross val, split now to save memory.
     if cross_val == False:
         trainx,testx,trainy,testy = train_test_split(dataset,target,test_size=0.2) #70 - 20 split
-    predictions = [] 
+    predictions = []
     # function to show error wrt sample size of data
     def errorScaler(error):
         global datasetSize
         return (error*datasetSize) / len(testx)
-    
+
     ### BEGIN ACTUAL FUNCTIONS ###
     for i in range(len(clfs)):
         classifier = clfs[i]
@@ -896,7 +896,7 @@ def accuracyChecker(dataset,target,clfs,cross_val,ensemble,record,predictTest):
         if name == 'XGBClassifier' and cross_val == True:
             XGBChecker(dataset,target,classifier)
             continue
-        
+
         if cross_val == True: #if cross val, do this. else, use train test split.
             print('******** '+name+' ********')
             predicted = cross_validation.cross_val_predict(classifier,dataset,target,cv=5)
@@ -905,11 +905,11 @@ def accuracyChecker(dataset,target,clfs,cross_val,ensemble,record,predictTest):
             error = computeError(predicted,target)
             print(name + 'Competition metric score : '+str(error))
             print(name + 'Competition metric score adjusted for train size: '+str(errorScaler(error)))
-            
+
         else: #use train test split
             #special fit for xgbclassifier
             if name == 'XGBClassifier':
-                classifier.fit(trainx,trainy, early_stopping_rounds=25, 
+                classifier.fit(trainx,trainy, early_stopping_rounds=25,
                        eval_metric="merror", eval_set=[(testx, testy)])
             else:
                 classifier.fit(trainx,trainy)
@@ -930,8 +930,8 @@ def accuracyChecker(dataset,target,clfs,cross_val,ensemble,record,predictTest):
                 params = classifier.get_params()
                 dataSize = len(testy)
                 writeToCSV(name,params,cross_val,dataSize,testAccuracy,confMat,error,scaledError)
-                
-     #if ensemble, do ensemble stuff       
+
+     #if ensemble, do ensemble stuff
     if ensemble and len(clfs) >= 2 and cross_val == False:
         predictions = np.array(predictions) #transpose it
         predictions = predictions.T
@@ -941,7 +941,7 @@ def accuracyChecker(dataset,target,clfs,cross_val,ensemble,record,predictTest):
         confMat = metrics.confusion_matrix(testy,predicted,labels=[0,1,2,3,4,5])
         error = computeError(predicted,testy)
         scaledError= errorScaler(error)
-        
+
         print('5 fold cross val accuracy for ensemble '+str(testAccuracy))
         print(confMat)
         print('Ensemble Competition metric score : '+str(error))
@@ -955,7 +955,7 @@ def accuracyChecker(dataset,target,clfs,cross_val,ensemble,record,predictTest):
             clfs.append(clf)
     return clfs
 
-#Function to write inputs to CSV        
+#Function to write inputs to CSV
 def writeToCSV(name,params,cross_val,size,testAccuracy,confMat,error,scaledError):
     fileName = 'resultsCSV_Thiru.csv'
     if os.path.isfile(fileName) == False:
@@ -968,15 +968,15 @@ def writeToCSV(name,params,cross_val,size,testAccuracy,confMat,error,scaledError
 
 """
 Function made to specifically handle xgboost. works similar to accuracyChecker.
-Set to 5 fold CV. 
-"""    
+Set to 5 fold CV.
+"""
 def XGBChecker(dataset,target,classifier):
     print('******** XGBClassifier ********')
     cvList = []
     predicted = np.array([])
-    newTarget = np.array([]) #hackish solution. 
+    newTarget = np.array([]) #hackish solution.
     fold = 0
-    sss = StratifiedShuffleSplit(target,5,test_size=0.2, random_state=0)    
+    sss = StratifiedShuffleSplit(target,5,test_size=0.2, random_state=0)
     for train_index, test_index in sss:
         fold+=1
         print('Training Xgboost fold '+str(fold))
@@ -984,19 +984,19 @@ def XGBChecker(dataset,target,classifier):
         trainY = target[train_index]
         testX = dataset.iloc[test_index]
         testY = target[test_index]
-        
-        classifier.fit(trainX,trainY, early_stopping_rounds=25, 
+
+        classifier.fit(trainX,trainY, early_stopping_rounds=25,
                        eval_metric="merror", eval_set=[(testX, testY)])
-                       
+
         pred = classifier.predict(testX)
         predicted = np.concatenate((predicted,pred))
         newTarget = np.concatenate((testY,newTarget))
         cvList.append(metrics.accuracy_score(testY,pred))
-    
+
     print('Xgboost 5 fold cv: '+str(cvList))
     print('Average CV Score: '+ str(np.mean(cvList)) + ' +/- ' + str(np.std(cvList)))
     print(metrics.confusion_matrix(newTarget,predicted,labels=[0,1,2,3,4,5]))
-    print('Competition metric score : '+str(computeError(predicted,newTarget)))        
+    print('Competition metric score : '+str(computeError(predicted,newTarget)))
 
 """
 Input:
@@ -1009,15 +1009,41 @@ Output:
 def computeError(predicted,target):
     return sum(abs(predicted-target))
 
-    
+
 ###################################################
 #               Generate Predictions              #
 ###################################################
-    
+
 def generatePredictions(clfs,ensemble):
     # cols needed: orderID,articleID,colorCode,sizeCode,prediction
     pass
-    
+
+# tuning TODO list
+# 1. tune max depth: original (8), best (8), fail (7,9)
+# 2. tune min child weight
+# 2. tune gamma
+# 3. tune subsample
+# 4. tune colsample_bytree
+# 4. tune regularization alpha param
+# 5. reduce learning rate
+def tuneParameters(dataset,target):
+    #find base accuracy first
+    trainx,testx,trainy,testy = train_test_split(dataset,target,test_size=0.2)
+    classifier = xgb.XGBClassifier(max_depth = 9,n_estimators=300,nthread=8,seed=1,silent=1,
+                            objective= 'multi:softmax',learning_rate=0.1,subsample=0.9)
+    classifier.fit(trainx,trainy, early_stopping_rounds=25,
+                       eval_metric="merror", eval_set=[(testx, testy)])
+    testAccuracy = classifier.score(testx,testy)
+    params = classifier.get_params()
+    fileName = 'tuneParameters.csv'
+    if os.path.isfile(fileName) == False:
+        with open(fileName,'w',newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(['Params','Accuracy','Tuning'])
+    with open(fileName,'a',newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow([params,testAccuracy,"Max depth"])
+
 def run():
     train = loadDataFrame()
     global datasetSize
@@ -1026,14 +1052,15 @@ def run():
     dataset,target = stratifiedSampleGenerator(dataset,target,test_size=0.25)
     # testFeatureAccuracy(dataset,target)
     # finalCols,keepList,discardList = testFeatureAccuracy2(dataset,target)
-    # finalCols = joblib.load('colstokeep.pkl')
-    # finalCols.extend(['likelyReturnSize','likelyReturnColor','likelyReturnPdtGrp'])
+    finalCols = joblib.load('colstokeep.pkl')
+    finalCols.extend(['likelyReturnSize','likelyReturnColor','likelyReturnPdtGrp'])
     for i in dataset.columns:
         dataset[i].fillna(-99,inplace=True)
+    tuneParameters(dataset[finalCols],target)
     # clfs = [xgBoost(),randomForest(),extraTrees(),kNN(),neuralNetwork()]
-    clfs = [xgBoost(),randomForest(),extraTrees()]
-    clfs = accuracyChecker(dataset,target,clfs,cross_val=False,ensemble = True,record = True,predictTest=False) # Dont use CV, Yes ensemble, Yes Record. 
-    
+    # clfs = [xgBoost(),randomForest(),extraTrees()]
+    # clfs = accuracyChecker(dataset[finalCols],target,clfs,cross_val=False,ensemble = True,record = True,predictTest=False) # Dont use CV, Yes ensemble, Yes Record.
+
     #test = loadTestDataFrame()
 if __name__ == '__main__':
 	run()
