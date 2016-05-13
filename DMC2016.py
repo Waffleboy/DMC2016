@@ -659,7 +659,8 @@ def featureEngineering(df,state):
                 if size in sizeDic[currCust]:
                     likelyReturnSize.set_value(i,sizeDic[currCust][size])
                 else:
-                    likelyReturnSize.set_value(i,-99)
+                    sizeSet = set(sizeDic[currCust].keys())
+                    likelyReturnSize.set_value(i,min(sizeSet,key=lambda x:abs(x-size)))
                 if color in colorDic[currCust]:
                     likelyReturnColor.set_value(i,colorDic[currCust][color])
                 else:
@@ -1056,10 +1057,10 @@ def run():
     finalCols.extend(['likelyReturnSize','likelyReturnColor','likelyReturnPdtGrp'])
     for i in dataset.columns:
         dataset[i].fillna(-99,inplace=True)
-    tuneParameters(dataset[finalCols],target)
+    # tuneParameters(dataset[finalCols],target)
     # clfs = [xgBoost(),randomForest(),extraTrees(),kNN(),neuralNetwork()]
-    # clfs = [xgBoost(),randomForest(),extraTrees()]
-    # clfs = accuracyChecker(dataset[finalCols],target,clfs,cross_val=False,ensemble = True,record = True,predictTest=False) # Dont use CV, Yes ensemble, Yes Record.
+    clfs = [xgBoost(),randomForest(),extraTrees()]
+    clfs = accuracyChecker(dataset[finalCols],target,clfs,cross_val=False,ensemble = True,record = True,predictTest=False) # Dont use CV, Yes ensemble, Yes Record.
 
     #test = loadTestDataFrame()
 if __name__ == '__main__':
