@@ -3,6 +3,8 @@ library(Matrix)
 setwd("/home/andre/workshop/dmc2016")
 train <- read.csv("preprocessed_train.csv")
 
+# train = train[c('orderDate','articleID','colorCode','sizeCode','productGroup','customerID','deviceID','paymentMethod','voucherID','modeSize','averageColor','priceDiscount','quantity','cheapArticle','price','averageSpent','differenceModeSize','purchaseFrequency','repeatCustomer', 'totalSpent','rrp','totalPurchases','returnsPerCustomer','customerSpecificReturn','yearlyExpense','returnQuantity')] # thirucols
+
 datasetSize = nrow(train) #for later computation
 
 ##SAMPLE of 0.2 of entire dataset
@@ -45,23 +47,23 @@ dtest <- xgb.DMatrix(data=test, label=testy)
 watchlist <- list(val=dtest,train=dtrain)
 
 param <- list(  objective           = "multi:softmax", 
-                num_class           = 6,
-                eval_metric         = "merror",
-                eta                 = 0.1,
-                max_depth           = 8,
-                subsample           = 0.9,
-                nthread             = 8,
-                set.seed            = 123
-)
+    num_class           = 6,
+    eval_metric         = "merror",
+    eta                 = 0.1,
+    max_depth           = 8,
+    subsample           = 0.9,
+    nthread             = 8,
+    set.seed            = 123
+    )
 
 clf <- xgb.train(   params              = param, 
-                    data                = dtrain, 
-                    nrounds             = 700, 
-                    verbose             = 1,
-                    watchlist           = watchlist,
-                    maximize            = FALSE,
-                    early.stop.round    = 25
-)
+    data                = dtrain, 
+    nrounds             = 700, 
+    verbose             = 1,
+    watchlist           = watchlist,
+    maximize            = FALSE,
+    early.stop.round    = 25
+    )
 
 #### Competition metric functions ###
 computeError = function(predicted,target){
