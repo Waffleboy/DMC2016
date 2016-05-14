@@ -1,13 +1,15 @@
 library(xgboost)
 library(Matrix)
-train <- read.csv("E:/git/DMC2016/preprocessed.csv")
+
+## Insert your dataset here.
+train <- read.csv("E:/git/DMC2016/thiruFiles/featureReducedTrain.csv")
 
 datasetSize = nrow(train) #for later computation
 
 ##SAMPLE of 0.2 of entire dataset
-SAMPLE_SIZE = 0.2
-train <- train[sample(1:nrow(train), nrow(train)*SAMPLE_SIZE,
-                       replace=FALSE),]
+#SAMPLE_SIZE = 0.2
+#train <- train[sample(1:nrow(train), nrow(train)*SAMPLE_SIZE,
+#                       replace=FALSE),]
 
 #split to dataset and target label
 labels = train['returnQuantity'] 
@@ -40,7 +42,7 @@ test <- sparse.model.matrix(testy ~ ., data = testx)
 dtrain <- xgb.DMatrix(data=train, label=trainy)
 dtest <- xgb.DMatrix(data=test, label=testy)
 
-watchlist <- list(val=dtest,train=dtrain)
+watchlist <- list(test=dtest,train=dtrain)
 
 param <- list(  objective           = "multi:softmax", 
                 num_class           = 6,
@@ -48,7 +50,8 @@ param <- list(  objective           = "multi:softmax",
                 eta                 = 0.1,
                 max_depth           = 8,
                 subsample           = 0.9,
-                nthread             = 8
+                nthread             = 8,
+                set.seed            = 1
 )
 
 clf <- xgb.train(   params              = param, 
@@ -57,8 +60,7 @@ clf <- xgb.train(   params              = param,
                     verbose             = 1,
                     watchlist           = watchlist,
                     maximize            = FALSE,
-                    early.stop.round    = 25,
-                    seed                = 1
+                    early.stop.round    = 25
 )
 
 #### Competition metric functions ###
