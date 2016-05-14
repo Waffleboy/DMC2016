@@ -1,15 +1,15 @@
 library(xgboost)
 library(Matrix)
-
-## Insert your dataset here.
-train <- read.csv("E:/git/DMC2016/thiruFiles/featureReducedTrain.csv")
+setwd("/home/andre/workshop/dmc2016")
+train <- read.csv("preprocessed_train.csv")
 
 datasetSize = nrow(train) #for later computation
 
 ##SAMPLE of 0.2 of entire dataset
-#SAMPLE_SIZE = 0.2
-#train <- train[sample(1:nrow(train), nrow(train)*SAMPLE_SIZE,
-#                       replace=FALSE),]
+# SAMPLE_SIZE = 0.2
+# train <- train[sample(1:nrow(train), nrow(train)*SAMPLE_SIZE,
+                       # replace=FALSE),]
+train <- train[c('orderDate', 'articleID', 'colorCode', 'sizeCode', 'productGroup', 'price', 'rrp', 'voucherID', 'customerID', 'deviceID', 'paymentMethod', 'repeatCustomer', 'purchaseFrequency', 'averageSpent', 'differenceModeSize', 'yearlyExpense', 'colorPopularity', 'customerSpecificReturn', 'returnsPerCustomer', 'totalPurchases','likelyReturnSize','likelyReturnColor','likelyReturnPdtGrp','returnQuantity')]
 
 #split to dataset and target label
 labels = train['returnQuantity'] 
@@ -42,7 +42,7 @@ test <- sparse.model.matrix(testy ~ ., data = testx)
 dtrain <- xgb.DMatrix(data=train, label=trainy)
 dtest <- xgb.DMatrix(data=test, label=testy)
 
-watchlist <- list(test=dtest,train=dtrain)
+watchlist <- list(val=dtest,train=dtrain)
 
 param <- list(  objective           = "multi:softmax", 
                 num_class           = 6,
@@ -51,7 +51,7 @@ param <- list(  objective           = "multi:softmax",
                 max_depth           = 8,
                 subsample           = 0.9,
                 nthread             = 8,
-                set.seed            = 1
+                set.seed            = 123
 )
 
 clf <- xgb.train(   params              = param, 
