@@ -1,8 +1,16 @@
 library(xgboost)
 library(Matrix)
 
+#Thirucols only, 2.2m rows, no additional features like returnsize, accuracyL 0.71807
+
 ## Insert your dataset here.
-train <- read.csv("E:/git/DMC2016/thiruFiles/featureReducedTrain.csv")
+train <- read.csv("E:/git/DMC2016/preprocessed_train.csv")
+
+
+train = train[c('orderDate','articleID','colorCode','sizeCode','productGroup','customerID','deviceID','paymentMethod','voucherID',
+         'modeSize','averageColor','priceDiscount','quantity','cheapArticle','price','averageSpent',
+         'differenceModeSize','purchaseFrequency','repeatCustomer','totalSpent','rrp','totalPurchases','returnsPerCustomer',
+         'customerSpecificReturn','yearlyExpense','returnQuantity')]
 
 datasetSize = nrow(train) #for later computation
 
