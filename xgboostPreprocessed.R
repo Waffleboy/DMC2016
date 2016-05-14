@@ -51,7 +51,7 @@ param <- list(  objective           = "multi:softmax",
                 max_depth           = 8,
                 subsample           = 0.9,
                 nthread             = 8,
-                set.seed            = 1
+                set.seed            = 123
 )
 
 clf <- xgb.train(   params              = param, 
