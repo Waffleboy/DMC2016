@@ -1,6 +1,8 @@
 library(xgboost)
 library(Matrix)
+library(caret)
 setwd("/home/andre/workshop/dmc2016")
+# setwd("path/to/thirufiles/here")
 train <- read.csv("preprocessed_train.csv")
 
 # train = train[c('orderDate','articleID','colorCode','sizeCode','productGroup','customerID','deviceID','paymentMethod','voucherID','modeSize','averageColor','priceDiscount','quantity','cheapArticle','price','averageSpent','differenceModeSize','purchaseFrequency','repeatCustomer', 'totalSpent','rrp','totalPurchases','returnsPerCustomer','customerSpecificReturn','yearlyExpense','returnQuantity')] # thirucols
@@ -46,24 +48,46 @@ dtest <- xgb.DMatrix(data=test, label=testy)
 
 watchlist <- list(val=dtest,train=dtrain)
 
-param <- list(  objective           = "multi:softmax", 
-    num_class           = 6,
-    eval_metric         = "merror",
-    eta                 = 0.1,
-    max_depth           = 8,
-    subsample           = 0.9,
-    nthread             = 8,
-    set.seed            = 123
-    )
+param <- list(  objective   = "multi:softmax", 
+                num_class   = 6,
+                eval_metric = "merror",
+                eta         = 0.1,
+                max_depth   = 8,
+                subsample   = 0.9,
+                nthread     = 8,
+                set.seed    = 123)
 
-clf <- xgb.train(   params              = param, 
-    data                = dtrain, 
-    nrounds             = 700, 
-    verbose             = 1,
-    watchlist           = watchlist,
-    maximize            = FALSE,
-    early.stop.round    = 25
-    )
+# clf <- xgb.train(   params              = param, 
+#                     data                = dtrain, 
+#                     nrounds             = 700, 
+#                     verbose             = 1,
+#                     watchlist           = watchlist,
+#                     maximize            = FALSE,
+#                     early.stop.round    = 25)
+
+tuneGrid <- expand.grid(min_child_weight = c(4,5,6,7))
+
+gridSearch <- apply(tuneGrid, 1, function(parameterList){
+
+    param$min_child_weight = parameterList[["min_child_weight"]]
+
+    clf <- xgb.train(   params              = param, 
+                        data                = dtrain, 
+                        nrounds             = 700, 
+                        verbose             = 1,
+                        watchlist           = watchlist,
+                        maximize            = FALSE,
+                        early.stop.round    = 25)
+
+    
+    label = getinfo(dtest, "label")
+    pred <- predict(clf, dtest)
+    err <- as.numeric(sum(as.integer(pred > 0.5) != label))/length(label)
+    return(c(err,param))
+
+})
+
+print(gridSearch)
 
 #### Competition metric functions ###
 computeError = function(predicted,target){
@@ -83,8 +107,8 @@ print(paste("test-error=", err))
 print(paste("Accuracy =", 1- err))
 
 #Compute competiton metric
-error = computeError(pred,testy)
-scaledError = computeErrorScaled(error,datasetSize,testSize)
+# error = computeError(pred,testy)
+# scaledError = computeErrorScaled(error,datasetSize,testSize)
 
-print(paste('Competition Error is', as.character(error)))
-print(paste('Scaled Competition Error is', as.character(scaledError)))
+# print(paste('Competition Error is', as.character(error)))
+# print(paste('Scaled Competition Error is', as.character(scaledError)))
