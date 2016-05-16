@@ -56,7 +56,10 @@ param <- list(  objective   = "multi:softmax",
                 subsample   = 0.9,
                 nthread     = 8,
                 set.seed    = 123,
-                min_child_weight = 7)
+                min_child_weight = 7,
+                gamma       = 0.25,
+                subsample   = 1.0,
+                colsample_bytree = 0.8)
 
 # clf <- xgb.train(   params              = param, 
 #                     data                = dtrain, 
@@ -66,11 +69,12 @@ param <- list(  objective   = "multi:softmax",
 #                     maximize            = FALSE,
 #                     early.stop.round    = 25)
 
-tuneGrid <- expand.grid(gamma = c(0.0, 0.2, 0.4, 0.6))
+tuneGrid <- expand.grid(subsample = c(0.8,0.9,1.0), colsample_bytree = c(0.8,0.9,1.0))
 
 gridSearch <- apply(tuneGrid, 1, function(parameterList){
 
-    param$gamma = parameterList[["gamma"]]
+    param$subsample = parameterList[["subsample"]]
+    param$colsample_bytree = parameterList[["colsample_bytree"]]
 
     clf <- xgb.train(   params              = param, 
                         data                = dtrain, 
@@ -84,7 +88,7 @@ gridSearch <- apply(tuneGrid, 1, function(parameterList){
     label = getinfo(dtest, "label")
     pred <- predict(clf, dtest)
     err <- as.numeric(sum(as.integer(pred > 0.5) != label))/length(label)
-    return(c(err,param$gamma))
+    return(c(err,param$subsample,param$colsample_bytree))
 
 })
 
