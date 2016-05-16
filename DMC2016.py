@@ -10,11 +10,12 @@ from sklearn import metrics,cross_validation
 from sklearn.externals import joblib
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.grid_search import GridSearchCV
-from sklearn.preprocessing import LabelEncoder,Imputer
+from sklearn.preprocessing import LabelEncoder,Imputer,StandardScaler
 from sklearn.ensemble import RandomForestClassifier,ExtraTreesClassifier
 from sklearn.cross_validation import StratifiedShuffleSplit,train_test_split
 from collections import Counter
 from scipy import stats
+import tensorflow.contrib.learn as skflow
 # from sklearn.neural_network import MLPClassifier
 import xgboost as xgb
 
@@ -784,7 +785,7 @@ def optimizeClassifier(dataset,target,clf,params):
     gsearch = GridSearchCV(estimator = clf, param_grid = params,
                            scoring='f1_macro',n_jobs=8,iid=True, cv=5) #write own scorer?
     gsearch.fit(dataset,target)
-    print(gsearch.grid_scores_, gsearch.best_params_, gsearch.best_score_)
+    return gsearch.grid_scores_, gsearch.best_params_, gsearch.best_score_
 
 ###################################################
 #                 Testing Models                  #
@@ -1045,6 +1046,22 @@ def tuneParameters(dataset,target):
         writer = csv.writer(f)
         writer.writerow([params,testAccuracy,"Max depth"])
 
+def checkSkflowAccuracy(dataset,target):
+    # params1 = { "max_features" : ['log2',0.2,0.5] }
+    # params2 = { "min_samples_leaf" : [30, 50, 75]}
+    # baseline: 0.685 with max_feat=0.5
+    trainx,testx,trainy,testy = train_test_split(dataset,target,test_size=0.2)
+    classifier = RandomForestClassifier(max_depth=8, n_estimators=500, n_jobs=8, random_state=1, max_features=0.7)
+    classifier.fit(trainx, trainy)
+    score = metrics.accuracy_score(testy, classifier.predict(testx))
+    print("Accuracy: " + str(score))
+    print("###### MIN SAMPLES LEAF ######")
+    for feat2 in [30,50,75]:
+        classifier = RandomForestClassifier(max_depth=8, n_estimators=600, n_jobs=8, random_state=1, max_features=0.5, min_samples_leaf=feat2)
+        classifier.fit(trainx, trainy)
+        score = metrics.accuracy_score(testy, classifier.predict(testx))
+        print("Accuracy ("+ str(feat2) + "): " + str(score))
+
 def run():
     train = loadDataFrame()
     global datasetSize
@@ -1057,10 +1074,11 @@ def run():
     finalCols.extend(['likelyReturnSize','likelyReturnColor','likelyReturnPdtGrp'])
     for i in dataset.columns:
         dataset[i].fillna(-99,inplace=True)
+    checkSkflowAccuracy(dataset[finalCols],target)
     # tuneParameters(dataset[finalCols],target)
     # clfs = [xgBoost(),randomForest(),extraTrees(),kNN(),neuralNetwork()]
-    clfs = [xgBoost(),randomForest(),extraTrees()]
-    clfs = accuracyChecker(dataset[finalCols],target,clfs,cross_val=False,ensemble = True,record = True,predictTest=False) # Dont use CV, Yes ensemble, Yes Record.
+    # clfs = [xgBoost(),randomForest(),extraTrees()]
+    # clfs = accuracyChecker(dataset[finalCols],target,clfs,cross_val=False,ensemble = True,record = True,predictTest=False) # Dont use CV, Yes ensemble, Yes Record.
 
     #test = loadTestDataFrame()
 if __name__ == '__main__':
