@@ -15,7 +15,7 @@ from sklearn.ensemble import RandomForestClassifier,ExtraTreesClassifier
 from sklearn.cross_validation import StratifiedShuffleSplit,train_test_split
 from collections import Counter
 from scipy import stats
-# from sklearn.neural_network import MLPClassifier
+from sklearn.neural_network import MLPClassifier
 import xgboost as xgb
 
 # If existing processed csv exists, load it. Else, load raw dataset and run
@@ -752,7 +752,7 @@ def xgBoost():
     return clf
 
 def randomForest():
-    clf = RandomForestClassifier(max_depth=8, n_estimators=300,n_jobs=8,random_state=1,
+    clf = RandomForestClassifier(max_depth=8, n_estimators=550,n_jobs=8,random_state=1,
                                  class_weight={0:2,1:1})
     return clf
 
@@ -782,9 +782,14 @@ eg.
 """
 def optimizeClassifier(dataset,target,clf,params):
     gsearch = GridSearchCV(estimator = clf, param_grid = params,
-                           scoring='f1_macro',n_jobs=8,iid=True, cv=5) #write own scorer?
+                           scoring='f1_macro',n_jobs=8,iid=True) #write own scorer?
+    
     gsearch.fit(dataset,target)
-    print(gsearch.grid_scores_, gsearch.best_params_, gsearch.best_score_)
+    lst = [gsearch.grid_scores_, gsearch.best_params_, gsearch.best_score_]
+    joblib.dump(lst,'optimizerunvalues.pkl')
+    import subprocess
+    time=10
+    subprocess.call(["shutdown.exe", "/s","/t", str(time)])
 
 ###################################################
 #                 Testing Models                  #
@@ -913,7 +918,14 @@ def accuracyChecker(dataset,target,clfs,cross_val,ensemble,record,predictTest):
                 classifier.fit(trainx,trainy, early_stopping_rounds=25,
                        eval_metric="merror", eval_set=[(testx, testy)])
             else:
+                if name == 'MLPClassifier':
+                    from sklearn.preprocessing import StandardScaler
+                    scale = StandardScaler()
+                    scale.fit(trainx)
+                    trainx = scale.transform(trainx)
+                    testx = scale.transform(testx)
                 classifier.fit(trainx,trainy)
+            
             clfs[i] = classifier # set the fitted classifier to lst
             pred = classifier.predict(testx)
             if ensemble: #if ensemble, append to pred to use later
@@ -936,7 +948,7 @@ def accuracyChecker(dataset,target,clfs,cross_val,ensemble,record,predictTest):
     if ensemble and len(clfs) >= 2 and cross_val == False:
         predictions = np.array(predictions) #transpose it
         predictions = predictions.T
-        clf = ExtraTreesClassifier(max_depth = 5,n_jobs=8,n_estimators=100)
+        clf = xgb.XGBClassifier(max_depth = 5,nthread=8,n_estimators=100)
         predicted = cross_validation.cross_val_predict(clf,predictions,testy,cv=5)
         testAccuracy = round(metrics.accuracy_score(testy,predicted),5)
         confMat = metrics.confusion_matrix(testy,predicted,labels=[0,1,2,3,4,5])
@@ -1053,14 +1065,13 @@ def run():
     dataset,target = stratifiedSampleGenerator(dataset,target,test_size=0.25)
     # testFeatureAccuracy(dataset,target)
     # finalCols,keepList,discardList = testFeatureAccuracy2(dataset,target)
-    finalCols = joblib.load('colstokeep.pkl')
+    finalCols = joblib.load('thiruFiles/colstokeep.pkl')
     finalCols.extend(['likelyReturnSize','likelyReturnColor','likelyReturnPdtGrp'])
-    for i in dataset.columns:
-        dataset[i].fillna(-99,inplace=True)
+    dataset=dataset[finalCols]
     # tuneParameters(dataset[finalCols],target)
-    # clfs = [xgBoost(),randomForest(),extraTrees(),kNN(),neuralNetwork()]
-    clfs = [xgBoost(),randomForest(),extraTrees()]
-    clfs = accuracyChecker(dataset[finalCols],target,clfs,cross_val=False,ensemble = True,record = True,predictTest=False) # Dont use CV, Yes ensemble, Yes Record.
+    clfs = [xgBoost(),randomForest(),neuralNetwork()]
+   # clfs = [xgBoost(),randomForest(),extraTrees()]
+    clfs = accuracyChecker(dataset,target,clfs,cross_val=False,ensemble = True,record = True,predictTest=False) # Dont use CV, Yes ensemble, Yes Record.
 
     #test = loadTestDataFrame()
 if __name__ == '__main__':
