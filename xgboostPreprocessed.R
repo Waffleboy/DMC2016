@@ -10,9 +10,9 @@ train <- read.csv("preprocessed_train.csv")
 datasetSize = nrow(train) #for later computation
 
 ##SAMPLE of 0.2 of entire dataset
-# SAMPLE_SIZE = 0.2
-# train <- train[sample(1:nrow(train), nrow(train)*SAMPLE_SIZE,
-                       # replace=FALSE),]
+SAMPLE_SIZE = 0.2
+train <- train[sample(1:nrow(train), nrow(train)*SAMPLE_SIZE, replace=FALSE),]
+
 train <- train[c('orderDate', 'articleID', 'colorCode', 'sizeCode', 'productGroup', 'price', 'rrp', 'voucherID', 'customerID', 'deviceID', 'paymentMethod', 'repeatCustomer', 'purchaseFrequency', 'averageSpent', 'differenceModeSize', 'yearlyExpense', 'colorPopularity', 'customerSpecificReturn', 'returnsPerCustomer', 'totalPurchases','likelyReturnSize','likelyReturnColor','likelyReturnPdtGrp','returnQuantity')]
 
 #split to dataset and target label
@@ -55,7 +55,8 @@ param <- list(  objective   = "multi:softmax",
                 max_depth   = 8,
                 subsample   = 0.9,
                 nthread     = 8,
-                set.seed    = 123)
+                set.seed    = 123,
+                min_child_weight = 7)
 
 # clf <- xgb.train(   params              = param, 
 #                     data                = dtrain, 
@@ -65,11 +66,11 @@ param <- list(  objective   = "multi:softmax",
 #                     maximize            = FALSE,
 #                     early.stop.round    = 25)
 
-tuneGrid <- expand.grid(min_child_weight = c(4,5,6,7))
+tuneGrid <- expand.grid(gamma = c(0.0, 0.2, 0.4, 0.6))
 
 gridSearch <- apply(tuneGrid, 1, function(parameterList){
 
-    param$min_child_weight = parameterList[["min_child_weight"]]
+    param$gamma = parameterList[["gamma"]]
 
     clf <- xgb.train(   params              = param, 
                         data                = dtrain, 
@@ -83,7 +84,7 @@ gridSearch <- apply(tuneGrid, 1, function(parameterList){
     label = getinfo(dtest, "label")
     pred <- predict(clf, dtest)
     err <- as.numeric(sum(as.integer(pred > 0.5) != label))/length(label)
-    return(c(err,param))
+    return(c(err,param$gamma))
 
 })
 
@@ -100,11 +101,11 @@ computeErrorScaled = function(computeError,datasetSize,testSize){
 ######################################################
 
 #Predict Data and score it
-label = getinfo(dtest, "label")
-pred <- predict(clf, dtest)
-err <- as.numeric(sum(as.integer(pred > 0.5) != label))/length(label)
-print(paste("test-error=", err))
-print(paste("Accuracy =", 1- err))
+# label = getinfo(dtest, "label")
+# pred <- predict(clf, dtest)
+# err <- as.numeric(sum(as.integer(pred > 0.5) != label))/length(label)
+# print(paste("test-error=", err))
+# print(paste("Accuracy =", 1- err))
 
 #Compute competiton metric
 # error = computeError(pred,testy)
