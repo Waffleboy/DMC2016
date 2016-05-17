@@ -10,12 +10,13 @@ from sklearn import metrics,cross_validation
 from sklearn.externals import joblib
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.grid_search import GridSearchCV
-from sklearn.preprocessing import LabelEncoder,Imputer
+from sklearn.preprocessing import LabelEncoder,Imputer,StandardScaler
 from sklearn.ensemble import RandomForestClassifier,ExtraTreesClassifier
 from sklearn.cross_validation import StratifiedShuffleSplit,train_test_split
 from collections import Counter
 from scipy import stats
-from sklearn.neural_network import MLPClassifier
+import tensorflow.contrib.learn as skflow
+# from sklearn.neural_network import MLPClassifier
 import xgboost as xgb
 
 # If existing processed csv exists, load it. Else, load raw dataset and run
@@ -748,12 +749,17 @@ def stratifiedSampleGenerator(dataset,target,test_size=0.1):
 ##Dont use this for accuracyChecker. Ran 1+ hr and didnt stop.
 def xgBoost():
     clf = xgb.XGBClassifier(max_depth = 8,n_estimators=300,nthread=8,seed=1,silent=1,
+<<<<<<< HEAD
                             objective= 'multi:softmax',learning_rate=0.1,subsample=0.9,
                             min_child_weight=7,gamma=0.25)
     return clf
 
 def randomForest():
     clf = RandomForestClassifier(max_depth=8, n_estimators=550,n_jobs=8,random_state=1)
+    return clf
+
+def randomForest():
+    clf = RandomForestClassifier(max_depth=8, n_estimators=500, n_jobs=8, random_state=1, max_features=0.9)
     return clf
 
 def extraTrees():
@@ -783,7 +789,7 @@ eg.
 def optimizeClassifier(dataset,target,clf,params):
     gsearch = GridSearchCV(estimator = clf, param_grid = params,
                            scoring='f1_macro',n_jobs=8,iid=True) #write own scorer?
-    
+
     gsearch.fit(dataset,target)
     lst = [gsearch.grid_scores_, gsearch.best_params_, gsearch.best_score_]
     joblib.dump(lst,'optimizerunvalues.pkl')
@@ -944,7 +950,7 @@ def accuracyChecker(dataset,target,clfs,cross_val,ensemble,record,predictTest):
                     trainx = scale.transform(trainx)
                     testx = scale.transform(testx)
                 classifier.fit(trainx,trainy)
-            
+
             clfs[i] = classifier # set the fitted classifier to lst
             pred = classifier.predict(testx)
             if ensemble: #if ensemble, append to pred to use later
@@ -1069,6 +1075,14 @@ def tuneParameters(dataset,target):
         writer = csv.writer(f)
         writer.writerow([params,testAccuracy,"Max depth"])
 
+def checkSkflowAccuracy(dataset,target):
+    # baseline: 0.6923 with max_feat=0.5
+    classifier = RandomForestClassifier(max_depth=8, n_estimators=500, n_jobs=8, random_state=1, max_features=0.9)
+    predicted = cross_validation.cross_val_predict(classifier,dataset,target,cv=5)
+    score = metrics.accuracy_score(target,predicted)
+    print("Accuracy: " + str(score))
+    print(metrics.confusion_matrix(target,predicted,labels=[0,1,2,3,4,5]))
+
 def run():
     train = loadDataFrame()
     global datasetSize
@@ -1077,12 +1091,15 @@ def run():
     dataset,target = stratifiedSampleGenerator(dataset,target,test_size=0.25)
     # testFeatureAccuracy(dataset,target)
     # finalCols,keepList,discardList = testFeatureAccuracy2(dataset,target)
-    finalCols = joblib.load('thiruFiles/colstokeep.pkl')
+    finalCols = joblib.load('colstokeep.pkl')
     finalCols.extend(['likelyReturnSize','likelyReturnColor','likelyReturnPdtGrp'])
-    dataset=dataset[finalCols]
+    dataset = dataset[finalCols]
+    for i in dataset.columns:
+        dataset[i].fillna(-99,inplace=True)
+    # checkSkflowAccuracy(dataset[finalCols],target)
     # tuneParameters(dataset[finalCols],target)
-    clfs = [xgBoost(),randomForest(),neuralNetwork()]
-   # clfs = [xgBoost(),randomForest(),extraTrees()]
+    # clfs = [xgBoost(),randomForest(),extraTrees(),kNN(),neuralNetwork()]
+    clfs = [xgBoost(),randomForest()]
     clfs = accuracyChecker(dataset,target,clfs,cross_val=False,ensemble = True,record = True,predictTest=False) # Dont use CV, Yes ensemble, Yes Record.
 
     #test = loadTestDataFrame()
