@@ -789,7 +789,7 @@ def optimizeClassifier(dataset,target,clf,params):
     lst = [gsearch.grid_scores_, gsearch.best_params_, gsearch.best_score_]
     joblib.dump(lst,'optimizerunvalues.pkl')
     
-def xgboostCV(clf, dataset,target ,useTrainCV=True, cv_folds=5, early_stopping_rounds=50):
+def xgboostCV(clf, dataset,target ,useTrainCV=True, cv_folds=5, early_stopping_rounds=25):
     print('Running XGBOOST cross validation')
     if useTrainCV:
         xgb_param = clf.get_xgb_params()
@@ -946,6 +946,7 @@ def accuracyChecker(dataset,target,clfs,ensemble,record):
                 from sklearn.preprocessing import StandardScaler
                 scale = StandardScaler()
                 scale.fit(trainx)
+                joblib.dump(scale,'scale.pkl')
                 trainx = scale.transform(trainx)
                 testx = scale.transform(testx)
             classifier.fit(trainx,trainy)
@@ -1025,7 +1026,11 @@ def generatePredictions(clfs,test):
     # cols needed: orderID,articleID,colorCode,sizeCode,prediction
     predictions = []
     for classifier in clfs:
+        if getNameFromModel(classifier) == 'MLPClassifier':
+            scale = joblib.load('scale.pkl')
+            test = scale.transform(test)
         predictions.append(clf.predict(test))
+        
     predictions = np.array(predictions) 
     predictions = predictions.T #transpose it
     #ensemble layer xgb
@@ -1060,6 +1065,10 @@ def run():
     dataset=dataset[finalCols]
     # tuneParameters(dataset[finalCols],target)
     clfs = [xgBoost(),randomForest(),extraTrees(),neuralNetwork()]
+    
+    xgboost = clfs[0]
+    xgboost = xgboostCV(xgboost,dataset,target)
+    clfs[0] = xgboost
    # clfs = [xgBoost(),randomForest(),extraTrees()]
     clfs = accuracyChecker(dataset,target,clfs,ensemble = True,record = True) # Dont use CV, Yes ensemble, Yes Record.
     joblib.dump(clfs,'classifiers.pkl')#save it incase crash, can just reload instead.
