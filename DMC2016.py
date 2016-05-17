@@ -1062,20 +1062,12 @@ def tuneParameters(dataset,target):
         writer.writerow([params,testAccuracy,"Max depth"])
 
 def checkSkflowAccuracy(dataset,target):
-    # params1 = { "max_features" : ['log2',0.2,0.5] }
-    # params2 = { "min_samples_leaf" : [30, 50, 75]}
-    # baseline: 0.685 with max_feat=0.5
-    trainx,testx,trainy,testy = train_test_split(dataset,target,test_size=0.2)
-    classifier = RandomForestClassifier(max_depth=8, n_estimators=500, n_jobs=8, random_state=1, max_features=0.7)
-    classifier.fit(trainx, trainy)
-    score = metrics.accuracy_score(testy, classifier.predict(testx))
+    # baseline: 0.6923 with max_feat=0.5
+    classifier = RandomForestClassifier(max_depth=8, n_estimators=500, n_jobs=8, random_state=1, max_features=0.9)
+    predicted = cross_validation.cross_val_predict(classifier,dataset,target,cv=5)
+    score = metrics.accuracy_score(target,predicted)
     print("Accuracy: " + str(score))
-    print("###### MIN SAMPLES LEAF ######")
-    for feat2 in [30,50,75]:
-        classifier = RandomForestClassifier(max_depth=8, n_estimators=600, n_jobs=8, random_state=1, max_features=0.5, min_samples_leaf=feat2)
-        classifier.fit(trainx, trainy)
-        score = metrics.accuracy_score(testy, classifier.predict(testx))
-        print("Accuracy ("+ str(feat2) + "): " + str(score))
+    print(metrics.confusion_matrix(target,predicted,labels=[0,1,2,3,4,5]))
 
 def run():
     train = loadDataFrame()
@@ -1085,7 +1077,7 @@ def run():
     dataset,target = stratifiedSampleGenerator(dataset,target,test_size=0.25)
     # testFeatureAccuracy(dataset,target)
     # finalCols,keepList,discardList = testFeatureAccuracy2(dataset,target)
-    finalCols = joblib.load('thiruFiles/colstokeep.pkl')
+    finalCols = joblib.load('colstokeep.pkl')
     finalCols.extend(['likelyReturnSize','likelyReturnColor','likelyReturnPdtGrp'])
     dataset = dataset[finalCols]
     for i in dataset.columns:
@@ -1093,8 +1085,8 @@ def run():
     checkSkflowAccuracy(dataset[finalCols],target)
     # tuneParameters(dataset[finalCols],target)
     # clfs = [xgBoost(),randomForest(),extraTrees(),kNN(),neuralNetwork()]
-    # clfs = [xgBoost(),randomForest(),extraTrees()]
-    # clfs = accuracyChecker(dataset,target,clfs,cross_val=False,ensemble = True,record = True,predictTest=False) # Dont use CV, Yes ensemble, Yes Record.
+    clfs = [xgBoost(),randomForest(),extraTrees()]
+    clfs = accuracyChecker(dataset,target,clfs,cross_val=False,ensemble = True,record = True,predictTest=False) # Dont use CV, Yes ensemble, Yes Record.
 
     #test = loadTestDataFrame()
 if __name__ == '__main__':
