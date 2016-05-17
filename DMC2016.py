@@ -748,12 +748,12 @@ def stratifiedSampleGenerator(dataset,target,test_size=0.1):
 ##Dont use this for accuracyChecker. Ran 1+ hr and didnt stop.
 def xgBoost():
     clf = xgb.XGBClassifier(max_depth = 8,n_estimators=300,nthread=8,seed=1,silent=1,
-                            objective= 'multi:softmax',learning_rate=0.1,subsample=0.9)
+                            objective= 'multi:softmax',learning_rate=0.1,subsample=0.9,
+                            min_child_weight=7,gamma=0.25)
     return clf
 
 def randomForest():
-    clf = RandomForestClassifier(max_depth=8, n_estimators=550,n_jobs=8,random_state=1,
-                                 class_weight={0:2,1:1})
+    clf = RandomForestClassifier(max_depth=8, n_estimators=550,n_jobs=8,random_state=1)
     return clf
 
 def extraTrees():
@@ -787,9 +787,28 @@ def optimizeClassifier(dataset,target,clf,params):
     gsearch.fit(dataset,target)
     lst = [gsearch.grid_scores_, gsearch.best_params_, gsearch.best_score_]
     joblib.dump(lst,'optimizerunvalues.pkl')
-    import subprocess
-    time=10
-    subprocess.call(["shutdown.exe", "/s","/t", str(time)])
+    
+def xgboostCV(clf, dataset,target ,useTrainCV=True, cv_folds=5, early_stopping_rounds=50):
+    print('Running XGBOOST cross validation')
+    if useTrainCV:
+        xgb_param = clf.get_xgb_params()
+        xgb_param['num_class'] = 6
+        xgtrain = xgb.DMatrix(dataset.values, label=target.values)
+        cvresult = xgb.cv(xgb_param, xgtrain, num_boost_round=clf.get_params()['n_estimators'], nfold=cv_folds,
+            metrics=['accuracy'], early_stopping_rounds=early_stopping_rounds, show_progress=False)
+        CV_ROUNDS = cvresult.shape[0]
+        print('Optimal Rounds: '+str(CV_ROUNDS))
+        clf.set_params(n_estimators=CV_ROUNDS)
+    
+    print('Fitting to dataset')
+    #Fit the algorithm on the data
+    clf.fit(dataset, target,eval_metric='accuracy')
+
+    #Predict training set:
+    dtrain_predictions = clf.predict(dataset)
+    accuracy = metrics.accuracy_score(target,dtrain_predictions)
+    print('CV Accuracy on training set: '+str(accuracy))
+    return clf
 
 ###################################################
 #                 Testing Models                  #
@@ -1027,18 +1046,11 @@ def computeError(predicted,target):
 #               Generate Predictions              #
 ###################################################
 
-def generatePredictions(clfs,ensemble):
+def generatePredictions(clfs):
     # cols needed: orderID,articleID,colorCode,sizeCode,prediction
+    
     pass
 
-# tuning TODO list
-# 1. tune max depth: original (8), best (8), fail (7,9)
-# 2. tune min child weight
-# 2. tune gamma
-# 3. tune subsample
-# 4. tune colsample_bytree
-# 4. tune regularization alpha param
-# 5. reduce learning rate
 def tuneParameters(dataset,target):
     #find base accuracy first
     trainx,testx,trainy,testy = train_test_split(dataset,target,test_size=0.2)
