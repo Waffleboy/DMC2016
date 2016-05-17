@@ -1061,7 +1061,7 @@ def run():
     # tuneParameters(dataset[finalCols],target)
     clfs = [xgBoost(),randomForest(),extraTrees(),neuralNetwork()]
    # clfs = [xgBoost(),randomForest(),extraTrees()]
-    clfs = accuracyChecker(dataset,target,clfs,cross_val=False,ensemble = True,record = True,predictTest=False) # Dont use CV, Yes ensemble, Yes Record.
+    clfs = accuracyChecker(dataset,target,clfs,ensemble = True,record = True) # Dont use CV, Yes ensemble, Yes Record.
     joblib.dump(clfs,'classifiers.pkl')#save it incase crash, can just reload instead.
 
     test = loadTestDataFrame()
