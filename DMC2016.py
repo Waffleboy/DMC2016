@@ -749,12 +749,11 @@ def stratifiedSampleGenerator(dataset,target,test_size=0.1):
 ##Dont use this for accuracyChecker. Ran 1+ hr and didnt stop.
 def xgBoost():
     clf = xgb.XGBClassifier(max_depth = 8,n_estimators=300,nthread=8,seed=1,silent=1,
-                            objective= 'multi:softmax',learning_rate=0.1,subsample=0.9)
+                            objective= 'multi:softmax',learning_rate=0.1,subsample=0.9, min_child_weight=7, gamma=0.25, colsample_bytree=0.8)
     return clf
 
 def randomForest():
-    clf = RandomForestClassifier(max_depth=8, n_estimators=550,n_jobs=8,random_state=1,
-                                 class_weight={0:2,1:1})
+    clf = RandomForestClassifier(max_depth=8, n_estimators=500, n_jobs=8, random_state=1, max_features=0.9)
     return clf
 
 def extraTrees():
@@ -1082,10 +1081,10 @@ def run():
     dataset = dataset[finalCols]
     for i in dataset.columns:
         dataset[i].fillna(-99,inplace=True)
-    checkSkflowAccuracy(dataset[finalCols],target)
+    # checkSkflowAccuracy(dataset[finalCols],target)
     # tuneParameters(dataset[finalCols],target)
     # clfs = [xgBoost(),randomForest(),extraTrees(),kNN(),neuralNetwork()]
-    clfs = [xgBoost(),randomForest(),extraTrees()]
+    clfs = [xgBoost(),randomForest()]
     clfs = accuracyChecker(dataset,target,clfs,cross_val=False,ensemble = True,record = True,predictTest=False) # Dont use CV, Yes ensemble, Yes Record.
 
     #test = loadTestDataFrame()
