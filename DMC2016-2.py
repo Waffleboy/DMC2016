@@ -211,7 +211,7 @@ def featureEngineering(df,state):
             totalSpent = joblib.load('pickleFiles/totalSpent.pkl')
             count = joblib.load('pickleFiles/count.pkl')
             averageSpent = joblib.load('pickleFiles/averageSpent.pkl')
-        elif state == False and os.path.exists('pickleFiles/totalSpent_test.pkl'):
+        elif state == False and os.path.exists('pickleFiles/totalSpent_test.pkl') and os.path.exists('pickleFiles/averageSpent_test.pkl'):
             totalSpent = joblib.load('pickleFiles/totalSpent_test.pkl')
             count = joblib.load('pickleFiles/count_test.pkl')
             averageSpent = joblib.load('pickleFiles/averageSpent_test.pkl')
@@ -274,7 +274,7 @@ def featureEngineering(df,state):
                         data[cust] = returns
                     else:
                         data[cust] += returns
-                joblib.dump(data,'returnsPerCustomer.pkl')
+                joblib.dump(data,'pickleFiles/returnsPerCustomer.pkl')
             data2 = {}
             for i in df.index:
                 cust = df['customerID'][i]
@@ -974,7 +974,9 @@ def accuracyChecker(dataset,target,clfs,ensemble,record):
         predictions = np.array(predictions) #transpose it
         predictions = predictions.T
         clf = xgb.XGBClassifier(max_depth = 5,nthread=8,n_estimators=100)
-        predicted = cross_validation.cross_val_predict(clf,predictions,testy,cv=5)
+        predicted = cross_validation.cross_val_predict(clf,predictions,testy,cv=5) #test accuracy only
+        clf.fit(predicted,testy)
+        joblib.dump(clf,'pickleFiles/xgboostEnsembleLayer.pkl')
         testAccuracy = round(metrics.accuracy_score(testy,predicted),5)
         confMat = metrics.confusion_matrix(testy,predicted,labels=[0,1,2,3,4,5])
         error = computeError(predicted,testy)
@@ -1029,13 +1031,13 @@ def generatePredictions(clfs,test):
         if getNameFromModel(classifier) == 'MLPClassifier':
             scale = joblib.load('scale.pkl')
             test = scale.transform(test)
-        predictions.append(clf.predict(test))
+        predictions.append(classifier.predict(test))
         
     predictions = np.array(predictions) 
     predictions = predictions.T #transpose it
     #ensemble layer xgb
-    clf = xgb.XGBClassifier(max_depth = 5,nthread=8,n_estimators=100)
-    predicted = cross_validation.cross_val_predict(clf,predictions,cv=5)
+    clf = joblib.load('pickleFiles/xgboostEnsembleLayer.pkl')
+    predicted = clf.predict(predictions)
     
     COM_NAME = socket.gethostname()
     if COM_NAME == 'Waffle':
@@ -1066,12 +1068,13 @@ def run():
     # tuneParameters(dataset[finalCols],target)
     clfs = [xgBoost(),randomForest(),extraTrees(),neuralNetwork()]
     clfs = accuracyChecker(dataset,target,clf2,ensemble = True,record = True) # Dont use CV, Yes ensemble, Yes Record.
-    joblib.dump(clfs1,'classifiers.pkl')#save it incase crash, can just reload instead.
+    joblib.dump(clfs,'classifiers.pkl')#save it incase crash, can just reload instead.
     
-    
+   # clfs = joblib.load('classifiers.pkl')    
     test = loadTestDataFrame()
     test = test[finalCols]
     generatePredictions(clfs,test)
     
 if __name__ == '__main__':
 	run()
+
