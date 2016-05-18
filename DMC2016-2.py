@@ -967,10 +967,10 @@ def accuracyChecker(dataset,target,clfs,ensemble,record):
         if record:
             params = classifier.get_params()
             dataSize = len(testy)
-            writeToCSV(name,params,cross_val,dataSize,testAccuracy,confMat,error,scaledError)
+            writeToCSV(name,params,dataSize,testAccuracy,confMat,error,scaledError)
 
      #if ensemble, do ensemble stuff
-    if ensemble and len(clfs) >= 2 and cross_val == False:
+    if ensemble and len(clfs) >= 2:
         predictions = np.array(predictions) #transpose it
         predictions = predictions.T
         clf = xgb.XGBClassifier(max_depth = 5,nthread=8,n_estimators=100)
@@ -987,14 +987,14 @@ def accuracyChecker(dataset,target,clfs,ensemble,record):
         if record:
             params = classifier.get_params()
             dataSize = len(testy)
-            writeToCSV('Ensemble',params,True,dataSize,testAccuracy,confMat,error,scaledError)
+            writeToCSV('Ensemble',params,dataSize,testAccuracy,confMat,error,scaledError)
         if predictTest:
             clf.fit(predictions,testy)
             clfs.append(clf)
     return clfs
 
 #Function to write inputs to CSV
-def writeToCSV(name,params,cross_val,size,testAccuracy,confMat,error,scaledError):
+def writeToCSV(name,params,size,testAccuracy,confMat,error,scaledError):
     fileName = 'resultsCSV_Thiru.csv'
     if os.path.isfile(fileName) == False:
         with open(fileName,'w',newline='') as f:
@@ -1002,7 +1002,7 @@ def writeToCSV(name,params,cross_val,size,testAccuracy,confMat,error,scaledError
             writer.writerow(['Classifier','Params','Cross Val','Sample_Size','Accuracy','conf_Matrix','Competition_Error','Scaled_Error'])
     with open(fileName,'a',newline='') as f:
         writer = csv.writer(f)
-        writer.writerow([name,params,cross_val,size,testAccuracy,confMat,error,scaledError])
+        writer.writerow([name,params,False,size,testAccuracy,confMat,error,scaledError])
 
 
 """
@@ -1065,14 +1065,10 @@ def run():
     dataset=dataset[finalCols]
     # tuneParameters(dataset[finalCols],target)
     clfs = [xgBoost(),randomForest(),extraTrees(),neuralNetwork()]
+    clfs = accuracyChecker(dataset,target,clf2,ensemble = True,record = True) # Dont use CV, Yes ensemble, Yes Record.
+    joblib.dump(clfs1,'classifiers.pkl')#save it incase crash, can just reload instead.
     
-    xgboost = clfs[0]
-    xgboost = xgboostCV(xgboost,dataset,target)
-    clfs[0] = xgboost
-   # clfs = [xgBoost(),randomForest(),extraTrees()]
-    clfs = accuracyChecker(dataset,target,clfs,ensemble = True,record = True) # Dont use CV, Yes ensemble, Yes Record.
-    joblib.dump(clfs,'classifiers.pkl')#save it incase crash, can just reload instead.
-
+    
     test = loadTestDataFrame()
     test = test[finalCols]
     generatePredictions(clfs,test)
